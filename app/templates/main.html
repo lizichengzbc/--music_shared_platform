@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}JJ20 Music - 发现和分享音乐{% endblock %}
+
+{% block meta_description %}JJ20 Music - 您发现、分享和享受音乐的平台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/main.css')}}">
+{% endblock %}
+
+{% block content %}
+<header class="header">
+    <div class="nav-container">
+        <div class="logo-container">
+            <div class="logo">JJ20 Music</div>
+        </div>
+        <nav class="nav-links">
+            <a href="#">发现</a>
+            <a href="#">排行榜</a>
+            <a href="#">歌单</a>
+            <a href="#">征选</a>
+        </nav>
+        <div class="search-wrapper">
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="搜索音乐、歌手、歌单...">
+                <button id="search-button"><i class="fas fa-search"></i></button>
+            </div>
+            <div id="search-suggestions" class="search-suggestions"></div>
+        </div>
+        <div class="user-actions">
+            {% if current_user.is_authenticated %}
+                <img src="{{ url_for('static', filename='uploads/' + current_user.avatar_url) if current_user.avatar_url else url_for('static', filename='images/default-default-album.png') }}" alt="{{ current_user.username }}" class="user-avatar">
+                <a href="{{ url_for('main.logout') }}" class="btn-user">登出</a>
+            {% else %}
+                <a href="{{ url_for('main.login') }}" class="btn-user">登录</a>
+                <a href="{{ url_for('main.register') }}" class="btn-user">注册</a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="content-wrapper">
+        <section id="search-results" class="search-results" style="display: none;">
+            <h2>搜索结果</h2>
+            <div id="results-container"></div>
+        </section>
+
+        <section class="photo-of-the-day">
+            <h2>今日之曲</h2>
+            <div class="photo-count">10/15</div>
+            <img src="{{ url_for('static', filename='images/oneday.png') }}" alt="Niki Album Cover">
+            <div class="photo-info">
+                <h3>我渴望的 All I Ever Wanted (Original ...)</h3>
+            </div>
+            <p>每日一曲，从日常的编辑推荐中再次精选而出，是街声给每一首好作品的至高激赏与鼓励。</p>
+        </section>
+        <section class="song-list">
+            <div class="song-list-header">
+                <h3>最新歌曲</h3>
+                <a href="#">查看更多</a>
+            </div>
+            <div id="song-list-container">
+                {% for song in songs %}
+                <div class="song-item" data-song-id="{{ song.id }}">
+                    <img src="{{ song.image_url }}" alt="{{ song.name }} album art">
+                    <div class="song-info">
+                        <h4>{{ song.name }}</h4>
+                        <p>{{ song.artist }}</p>
+                    </div>
+                    <div class="song-duration">{{ '%d:%02d'|format(song.duration//60, song.duration%60) }}</div>
+                    <button class="play-button"><i class="fas fa-play"></i></button>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</main>
+
+<footer class="music-player">
+    <div class="now-playing">
+        <img src="{{ url_for('static', filename='images/default-album.png') }}" alt="Now Playing" id="current-album-art">
+        <div>
+            <h4 id="current-song-title">Select a song to start playing</h4>
+            <p id="current-song-artist"></p>
+            <audio id="audio-player" style="display: none;"></audio>
+        </div>
+    </div>
+    <div class="controls">
+        <button id="prev-track"><i class="fas fa-step-backward"></i></button>
+        <button id="play-pause" class="play-pause"><i class="fas fa-play"></i></button>
+        <button id="next-track"><i class="fas fa-step-forward"></i></button>
+    </div>
+    <div class="progress-bar">
+        <div class="progress"></div>
+    </div>
+</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}

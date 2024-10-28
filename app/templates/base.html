@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}JJ20 Music Share - 分享你的音乐世界{% endblock %}">
+    <title>{% block title %}JJ20 Music Share{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+        {% block header %}
+        <!-- 这里可以添加网站的通用头部 -->
+        {% endblock %}
+
+        {% block content %}{% endblock %}
+
+
+    <script src="{{ url_for('static', filename='js/main.js') }}">
+        var loginUrl = "{{ url_for('main.login') }}";
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

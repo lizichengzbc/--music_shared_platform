@@ -1,0 +1,13 @@
+{#index.html#}
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="welcome-screen" id="welcome-screen">
+    <div class="welcome-content">
+        <h1 class="welcome-title">Welcome to JJ20</h1>
+        <p class="welcome-subtitle">Your Ultimate Music Share Platform</p>
+        <a href="{{ url_for('main.index') }}" class="enter-button">Enter the Music World</a>
+    </div>
+</div>
+{% endblock %}
