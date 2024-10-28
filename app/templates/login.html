@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JJ20 Music Share - 登录到您的账户">
+    <title>登录 - JJ20 Music Share</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>登录</h2>
+        </div>
+        <div class="form-container">
+            <form id="loginForm">
+                <div class="form-control">
+                    <label for="email">邮箱地址</label>
+                    <input type="email" id="email" name="email" required placeholder="请输入您的邮箱地址">
+                </div>
+                <div class="form-control">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" required placeholder="请输入您的密码">
+                </div>
+                <button type="submit" class="btn">登录</button>
+            </form>
+            <div class="toggle-form">
+                <a href="#" id="toggleVerification">使用验证码登录</a>
+                <a href="{{ url_for('main.reset_password') }}" class="forgot-password">忘记密码？</a>
+            </div>
+            <form id="verificationForm" style="display: none;">
+                <div class="form-control">
+                    <label for="verificationEmail">邮箱地址</label>
+                    <input type="email" id="verificationEmail" name="verificationEmail" required placeholder="请输入您的邮箱地址">
+                </div>
+                <div class="form-control">
+                    <label for="verificationCode">验证码</label>
+                    <input type="text" id="verificationCode" name="verificationCode" required placeholder="请输入验证码">
+                </div>
+                <button type="button" id="sendCode" class="btn">发送验证码</button>
+                <button type="submit" class="btn" style="margin-top: 10px;">验证码登录</button>
+            </form>
+            <div id="message" class="message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        var loginUrl = "{{ url_for('main.login') }}";
+        var sendVerificationCodeUrl = "{{ url_for('main.send_verification_code') }}";
+        var verifyCodeUrl = "{{ url_for('main.verify_code') }}";
+
+
+        const loginForm = document.getElementById('loginForm');
+        const verificationForm = document.getElementById('verificationForm');
+        const toggleVerification = document.getElementById('toggleVerification');
+        const sendCodeBtn = document.getElementById('sendCode');
+
+        toggleVerification.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
+            verificationForm.style.display = verificationForm.style.display === 'none' ? 'block' : 'none';
+            toggleVerification.textContent = loginForm.style.display === 'none' ? '使用密码登录' : '使用验证码登录';
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage('登录成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500);
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('登录失败，请稍后重试', 'error');
+            }
+        });
+
+        sendCodeBtn.addEventListener('click', async () => {
+            const email = document.getElementById('verificationEmail').value;
+            if (!email) {
+                showMessage('请输入邮箱地址', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/send_verification_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, purpose: 'login' }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage('验证码已发送，请查收邮箱', 'success');
+                    startCountdown(sendCodeBtn);
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('发送验证码失败，请稍后重试', 'error');
+            }
+        });
+
+        verificationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('verificationEmail').value;
+            const code = document.getElementById('verificationCode').value;
+
+            try {
+                const response = await fetch('/verify_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, code }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage('登录成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1500);
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('验证失败，请稍后重试', 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = text;
+            messageElement.className = `message ${type}`;
+            messageElement.style.display = 'block';
+        }
+
+        function startCountdown(button) {
+            let countdown = 60;
+            button.disabled = true;
+            const timer = setInterval(() => {
+                button.textContent = `重新发送(${countdown}s)`;
+                countdown--;
+                if (countdown < 0) {
+                    clearInterval(timer);
+                    button.textContent = '发送验证码';
+                    button.disabled = false;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
