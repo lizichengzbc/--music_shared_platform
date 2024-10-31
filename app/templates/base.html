@@ -17,7 +17,7 @@
         {% block content %}{% endblock %}
 
 
-    <script src="{{ url_for('static', filename='js/main.js') }}">
+    <script>
         var loginUrl = "{{ url_for('main.login') }}";
     </script>
     {% block extra_js %}{% endblock %}

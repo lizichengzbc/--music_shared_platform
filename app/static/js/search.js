@@ -73,13 +73,6 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsContainer.innerHTML = '<div class="no-results">未找到相关歌曲</div>';
         }
 
-        // 调整其他内容的显示
-        const photoOfDay = document.querySelector('.photo-of-the-day');
-        const songList = document.querySelector('.song-list');
-        if (isSearching) {
-            photoOfDay.style.display = 'none';
-            songList.style.display = 'none';
-        }
     };
 
     // 隐藏搜索结果
@@ -153,13 +146,17 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             searchSuggestions.style.display = 'none';
         }
+        hiddenOthers()
     }, 300));
 
     // 搜索按钮点击事件
     searchButton.addEventListener('click', () => {
+
         const query = searchInput.value.trim();
         handleSearch(query);
         searchSuggestions.style.display = 'none';
+
+        hiddenOthers();
     });
 
     // 搜索建议点击事件
@@ -200,6 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
             handleSearch(query);
             searchSuggestions.style.display = 'none';
         }
+
+        hiddenOthers();
     });
 
     // 点击外部关闭搜索建议
@@ -208,4 +207,13 @@ document.addEventListener('DOMContentLoaded', function() {
             searchSuggestions.style.display = 'none';
         }
     });
+    function hiddenOthers(){
+        // 调整其他内容的显示
+        const photoOfDay = document.querySelector('.photo-of-the-day');
+        const songList = document.querySelector('.song-list');
+        if (isSearching) {
+            photoOfDay.style.display = 'none';
+            songList.style.display = 'none';
+        }
+    }
 });

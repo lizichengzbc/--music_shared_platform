@@ -37,7 +37,6 @@ def welcome():
 def index():
     return render_template('main.html')
 
-
 @main.route('/api/songs', methods=['GET'])
 def get_songs():
     songs = Song.query.options(
@@ -50,7 +49,26 @@ def get_songs():
         'name': song.name,
         'artist': song.artist.name if song.artist else 'Unknown Artist',
         'album': song.album.name if song.album else 'Unknown Album',
-        'image_url': song.image_url or url_for('static', filename='images/' + str(song.name) + '.jpg'),
+        'image_url':  song.image_url,
+        'duration': song.duration
+    } for song in songs]
+
+    return jsonify(songs_data)
+
+# 获取全部歌曲信息
+@main.route('/api/all_songs', methods=['GET'])
+def get_all_songs():
+    songs = Song.query.options(
+        joinedload(Song.artist),
+        joinedload(Song.album)
+    ).order_by(Song.created_at.desc()).all()
+
+    songs_data = [{
+        'id': song.id,
+        'name': song.name,
+        'artist': song.artist.name if song.artist else 'Unknown Artist',
+        'album': song.album.name if song.album else 'Unknown Album',
+        'image_url': song.image_url,
         'duration': song.duration
     } for song in songs]
 
@@ -314,8 +332,23 @@ def download():
     success, message = download_song(song_name)
     return jsonify({'success': success, 'message': message})
 
+@main.route('/api/songs/<int:song_id>/lyrics')
+def get_song_lyrics(song_id):
+    song = Song.query.get_or_404(song_id)
+    return jsonify(song.import_krc_lyrics(song.lyrics))
 
-def is_strong_password(password):    return (len(password) >= 8 and
+
+
+
+
+
+
+
+
+
+
+def is_strong_password(password):
+    return (len(password) >= 8 and
             re.search(r"[A-Z]", password) and
             re.search(r"[a-z]", password) and
             re.search(r"\d", password) and
