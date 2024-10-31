@@ -7,7 +7,7 @@ import requests
 import re
 import json
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Any
 from app.models import Artist, Album, Song
 from app import db
 from flask import current_app
@@ -24,59 +24,78 @@ def generate_signature(timestamp: int, key: str, params: list) -> str:
     return calculate_md5("".join(signature_list))
 
 def MD5_sign(timestamp: int, audio_id: str) -> str:
+    params = [
+        "appid=1014",
+        f"clienttime={timestamp}",
+        "clientver=20000",
+        "dfid=3ewLD22PAhYA49Ohz53I5AJu",
+        f"encode_album_audio_id={audio_id}",
+        "mid=08e20c779ea827a1cc5cc3995b71f48e",
+        "platid=4",
+        "srcappid=2919",
+        "token=9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "userid=1188922775",
+        "uuid=08e20c779ea827a1cc5cc3995b71f48e",
+]
+    return generate_signature(timestamp, 'NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt', params)
+
+def MD5_sign_login(timestamp: int, audio_id: str) -> str:
     params = ['appid=1014',
               f'clienttime={timestamp}',
               'clientver=20000',
-              'dfid=2mRa3T2zVMFG0xpv9D3Z3bL4',
+              'dfid=3ewLD22PAhYA49Ohz53I5AJu',
               f'encode_album_audio_id={audio_id}',
               'mid=08e20c779ea827a1cc5cc3995b71f48e',
               'platid=4',
               'srcappid=2919',
-              'token=9db06ee5df6575d2c567548362cb837a200508d8ea3405ac6349f70d457d17b4',
+              'token=9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc',
               'userid=1188922775',
               'uuid=08e20c779ea827a1cc5cc3995b71f48e']
     return generate_signature(timestamp, 'NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt', params)
 
 def MD5_sign_search(timestamp: int, music_name: str) -> str:
-    params = [ 'appid=1014',
-               'bitrate=0',
-               'callback=callback123',
-               f'clienttime={timestamp}',
-               'clientver=1000',
-               'dfid=2mRa3T2zVMFG0xpv9D3Z3bL4',
-               'filter=10',
-               'inputtype=0',
-               'iscorrection=1',
-               'isfuzzy=0',
-               f'keyword={music_name}',
-               'mid=08e20c779ea827a1cc5cc3995b71f48e',
-               'page=1',
-               'pagesize=30',
-               'platform=WebFilter',
-               'privilege_filter=0',
-               'srcappid=2919',
-               'userid=1188922775',
-               'uuid=08e20c779ea827a1cc5cc3995b71f48e',]
+    params =[
+        "appid=1014",
+        "bitrate=0",
+        "callback=callback123",
+        f"clienttime={timestamp}",
+        "clientver=1000",
+        "dfid=3ewLD22PAhYA49Ohz53I5AJu",
+        "filter=10",
+        "inputtype=0",
+        "iscorrection=1",
+        "isfuzzy=0",
+        f"keyword={music_name}",
+        "mid=08e20c779ea827a1cc5cc3995b71f48e",
+        "page=1",
+        "pagesize=30",
+        "platform=WebFilter",
+        "privilege_filter=0",
+        "srcappid=2919",
+        "token=9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "userid=1188922775",
+        "uuid=08e20c779ea827a1cc5cc3995b71f48e",
+    ]
     return generate_signature(timestamp, 'NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt', params)
 
 def fetch_url(audio_id: str) -> Optional[str]:
     timestamp = int(time.time() * 1000)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     }
     params_dict = {
-        'appid': '1014',
-        'clienttime': timestamp,  # 这里 timestamp 变量需要定义
-        'clientver': '20000',
-        'dfid': '2mRa3T2zVMFG0xpv9D3Z3bL4',
-        'encode_album_audio_id': audio_id,  # 这里 music_name 变量需要定义
-        'mid': '08e20c779ea827a1cc5cc3995b71f48e',
-        'platid': '4',
-        'srcappid': '2919',
-        'token': '9db06ee5df6575d2c567548362cb837a200508d8ea3405ac6349f70d457d17b4',
-        'userid': '1188922775',
-        'uuid': '08e20c779ea827a1cc5cc3995b71f48e',
-        'signature': MD5_sign(timestamp, audio_id)
+        "appid": "1014",
+        "clienttime": timestamp,
+        "clientver": "20000",
+        "dfid": "3ewLD22PAhYA49Ohz53I5AJu",
+        "encode_album_audio_id": audio_id,
+        "mid": "08e20c779ea827a1cc5cc3995b71f48e",
+        "platid": "4",
+        "srcappid": "2919",
+        "token": "9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "userid": "1188922775",
+        "uuid": "08e20c779ea827a1cc5cc3995b71f48e",
+        "signature": MD5_sign(timestamp, audio_id),
     }
 
     try:
@@ -88,43 +107,45 @@ def fetch_url(audio_id: str) -> Optional[str]:
         logger.error(f"获取音乐URL失败: {e}")
         return None
 
-def audio_id_list(music_name: str) -> Optional[Tuple[str, str]]:
+def audio_id_list(music_name: str) -> tuple[list[Any], list[Any]] | None:
     timestamp = int(time.time() * 1000)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     }
     sign = MD5_sign_search(timestamp, music_name)
     params_dict = {
-        'appid': '1014',
-        'bitrate': '0',
-        'callback': 'callback123',
-        'clienttime': timestamp,  # 这里 timestamp 变量需要定义
-        'clientver': '1000',
-        'dfid': '2mRa3T2zVMFG0xpv9D3Z3bL4',
-        'filter': '10',
-        'inputtype': '0',
-        'iscorrection': '1',
-        'isfuzzy': '0',
-        'keyword': music_name,  # 这里 music_name 变量需要定义
-        'mid': '08e20c779ea827a1cc5cc3995b71f48e',
-        'page': '1',
-        'pagesize': '30',
-        'platform': 'WebFilter',
-        'privilege_filter': '0',
-        'srcappid': '2919',
-        'userid': '1188922775',
-        'uuid': '08e20c779ea827a1cc5cc3995b71f48e',
-        'signature': sign
-    }
+    "appid": "1014",
+    "bitrate": "0",
+    "callback": "callback123",
+    "clienttime": timestamp,
+    "clientver": "1000",
+    "dfid": "3ewLD22PAhYA49Ohz53I5AJu",
+    "filter": "10",
+    "inputtype": "0",
+    "iscorrection": "1",
+    "isfuzzy": "0",
+    "keyword": music_name,
+    "mid": "08e20c779ea827a1cc5cc3995b71f48e",
+    "page": "1",
+    "pagesize": "30",
+    "platform": "WebFilter",
+    "privilege_filter": "0",
+    "srcappid": "2919",
+    "token": "9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+    "userid": "1188922775",
+    "uuid": "08e20c779ea827a1cc5cc3995b71f48e",
+    "signature":sign,
+}
 
     try:
         response = requests.get('https://complexsearch.kugou.com/v2/search/song', headers=headers, params=params_dict)
         response.raise_for_status()
         callback_dict = re.findall('callback123\((.*)\)', response.text)[0]
         jsurl = json.loads(callback_dict)
-        fileNames = [item['FileName'] for item in jsurl['data']['lists'][0:10]]
+        print(jsurl)
+        fileNames = [item['FileName'] for item in jsurl['data']['lists'][0:8]]
         # eMixSongID = jsurl['data']['lists'][0:10]['EMixSongID']
-        eMixSongIDs = [item['EMixSongID'] for item in jsurl['data']['lists'][0:10]]
+        eMixSongIDs = [item['EMixSongID'] for item in jsurl['data']['lists'][0:8]]
         return fileNames, eMixSongIDs
     except (requests.RequestException, json.JSONDecodeError, IndexError) as e:
         logger.error(f"获取音乐ID失败: {e}")
@@ -133,21 +154,21 @@ def audio_id_list(music_name: str) -> Optional[Tuple[str, str]]:
 def images_download(audio_id: str) -> Optional[requests.Response]:
     timestamp = int(time.time() * 1000)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        "user-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     }
     params_dict = {
-        'appid': '1014',
-        'clienttime': timestamp,  # 这里 timestamp 变量需要定义
-        'clientver': '20000',
-        'dfid': '2mRa3T2zVMFG0xpv9D3Z3bL4',
-        'encode_album_audio_id': audio_id,  # 这里 music_name 变量需要定义
-        'mid': '08e20c779ea827a1cc5cc3995b71f48e',
-        'platid': '4',
-        'srcappid': '2919',
-        'token': '9db06ee5df6575d2c567548362cb837a200508d8ea3405ac6349f70d457d17b4',
-        'userid': '1188922775',
-        'uuid': '08e20c779ea827a1cc5cc3995b71f48e',
-        'signature': MD5_sign(timestamp, audio_id)
+        "appid": "1014",
+        "clienttime": timestamp,
+        "clientver": "20000",
+        "dfid": "3ewLD22PAhYA49Ohz53I5AJu",
+        "encode_album_audio_id": audio_id,
+        "mid": "08e20c779ea827a1cc5cc3995b71f48e",
+        "platid": "4",
+        "srcappid": "2919",
+        "token": "9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "userid": "1188922775",
+        "uuid": "08e20c779ea827a1cc5cc3995b71f48e",
+        "signature": MD5_sign(timestamp, audio_id)
     }
     try:
         response = requests.get('https://wwwapi.kugou.com/play/songinfo', params=params_dict, headers=headers)

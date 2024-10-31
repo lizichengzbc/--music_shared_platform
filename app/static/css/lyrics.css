@@ -1,0 +1,83 @@
+.lyrics-section {
+    position: fixed;
+    left: 50%;
+    bottom: 100px; /* 调整底部距离 */
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    z-index: 1000;
+    pointer-events: none; /* 让鼠标事件穿透歌词层 */
+}
+
+.lyrics-wrapper {
+    height: auto; /* 自适应高度 */
+    min-height: 120px; /* 设置最小高度确保显示完整 */
+    overflow: visible; /* 允许内容溢出 */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end; /* 从底部开始排列 */
+    padding: 20px 0;
+}
+
+.lyrics-inner {
+    position: relative;
+    width: 100%;
+    text-align: center;
+}
+
+.lyric-line {
+    padding: 8px 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(0, 0, 0, 0.5); /* 半透明黑色 */
+    font-family: "LXGW WenKai", "行楷", "PingFang SC", "Microsoft YaHei", serif;
+    font-size: 16px;
+    line-height: 1.6;
+    letter-spacing: 1px;
+    opacity: 0;
+    transform: translateY(20px);
+    margin: 4px 0;
+    text-shadow: 0px 0px 10px rgba(255, 255, 255, 0.8); /* 添加文字阴影提高可读性 */
+}
+
+.lyric-line.prev {
+    opacity: 0.6;
+    transform: translateY(0) scale(0.9);
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.lyric-line.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    color: rgba(0, 0, 0, 0.9);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.lyric-line.next {
+    opacity: 0.8;
+    transform: translateY(0) scale(0.95);
+    color: rgba(0, 0, 0, 0.6);
+}
+
+/* 移除遮罩效果 */
+.lyrics-wrapper::after {
+    display: none;
+}
+
+/* 添加显示动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lyric-line.animate {
+    animation: fadeInUp 0.3s ease-out forwards;
+}
