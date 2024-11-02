@@ -5,6 +5,16 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 
+
+
+# 创建艺术家和歌曲的多对多关系表
+song_artists = db.Table('song_artists',
+                        db.Column('song_id', db.Integer, db.ForeignKey('songs.id'), primary_key=True),
+                        db.Column('artist_id', db.Integer, db.ForeignKey('artists.id'), primary_key=True),
+                        db.Column('created_at', db.DateTime, default=datetime.utcnow)
+                        )
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -17,6 +27,8 @@ class User(UserMixin, db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+
+    downloads = db.relationship('Download', back_populates='user', lazy='dynamic')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -39,15 +51,6 @@ class VerificationCode(db.Model):
     def is_expired(self):
         return datetime.utcnow() > self.expires_at
 
-class Comment(db.Model):
-    __tablename__ = 'comments'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    user = db.relationship('User', backref=db.backref('comments', lazy=True))
 
 class Artist(db.Model):
     __tablename__ = 'artists'
@@ -57,8 +60,16 @@ class Artist(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # 改进关系定义
+    albums = db.relationship('Album', back_populates='artist', lazy='dynamic')
+    songs = db.relationship('Song',
+                            secondary=song_artists,
+                            back_populates='artists',
+                            lazy='dynamic')
+
     def __repr__(self):
         return f'<Artist {self.name}>'
+
 
 class Album(db.Model):
     __tablename__ = 'albums'
@@ -67,10 +78,13 @@ class Album(db.Model):
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'), nullable=False)
     release_year = db.Column(db.Integer)
     cover_image_path = db.Column(db.String(255))
+    local_cover_path = db.Column(db.String(255))  # 新增本地存储路径
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    artist = db.relationship('Artist', backref=db.backref('albums', lazy=True))
+    # 改进关系定义
+    artist = db.relationship('Artist', back_populates='albums')
+    songs = db.relationship('Song', back_populates='album', lazy='dynamic')
 
     def __repr__(self):
         return f'<Album {self.name}>'
@@ -80,20 +94,50 @@ class Song(db.Model):
     __tablename__ = 'songs'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False, index=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'), nullable=False)
     album_id = db.Column(db.Integer, db.ForeignKey('albums.id'))
     duration = db.Column(db.Integer)  # 歌曲时长（秒）
     image_url = db.Column(db.String(255))
+    local_image_path = db.Column(db.String(255))  # 本地图片存储路径
+    file_path = db.Column(db.String(255))  # 新增：MP3文件存储路径
+    file_size = db.Column(db.Integer)  # 新增：文件大小
+    download_count = db.Column(db.Integer, default=0)  # 新增：下载计数
     lyrics = db.Column(JSON)  # 使用 MySQL 的 JSON 类型
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    artist = db.relationship('Artist', backref=db.backref('songs', lazy=True))
-    album = db.relationship('Album', backref=db.backref('songs', lazy=True))
+    # 关系定义
+    artists = db.relationship('Artist',
+                            secondary=song_artists,
+                            back_populates='songs',
+                            lazy='joined')
+    album = db.relationship('Album', back_populates='songs')
+    downloads = db.relationship('Download', back_populates='song', lazy='dynamic')
 
     def __repr__(self):
         return f'<Song {self.name}>'
 
+    @property
+    def artist_names(self):
+        """获取所有艺术家名字的列表"""
+        return [artist.name for artist in self.artists]
+
+    @property
+    def primary_artist(self):
+        """获取主要艺术家（通常是第一个）"""
+        return self.artists[0] if self.artists else None
+
+    def increment_download_count(self):
+        """增加下载计数"""
+        self.download_count += 1
+        db.session.commit()
+
+    def get_file_path(self):
+        """获取文件的相对路径（用于URL生成）"""
+        if self.file_path:
+            return self.file_path.replace('app/static/', '')
+        return None
+
+    # 保留原有的歌词相关方法...
     @property
     def lyrics_dict(self):
         """获取歌词数据"""
@@ -104,87 +148,6 @@ class Song(db.Model):
         """设置歌词数据"""
         self.lyrics = value
 
-    @staticmethod
-    def parse_krc_time(time_str):
-        """解析KRC时间戳为秒数"""
-        try:
-            minutes, seconds = time_str.split(':')
-            return float(minutes) * 60 + float(seconds)
-        except:
-            return 0.0
-
-    def import_krc_lyrics(self, krc_content):
-        """导入KRC格式的歌词"""
-        # 初始化歌词数据结构
-        lyrics_data = {
-            "metadata": {},
-            "lyrics": []
-        }
-
-        # 解析元数据和歌词行
-        lines = krc_content.strip().split('\n')
-        current_time = 0.0
-
-        for line in lines:
-            # 处理元数据（方括号内的信息）
-            meta_match = re.match(r'\[(.*?):(.*?)\]', line)
-            if meta_match and not re.match(r'\[\d{2}:', line):
-                key, value = meta_match.groups()
-                lyrics_data["metadata"][key] = value.strip()
-                continue
-
-            # 处理带时间戳的歌词行
-            time_match = re.match(r'\[(\d{2}:\d{2}\.\d{2})\](.*)', line)
-            if time_match:
-                timestamp, text = time_match.groups()
-                time_seconds = self.parse_krc_time(timestamp)
-
-                lyrics_line = {
-                    "timestamp": time_seconds,
-                    "text": text.strip(),
-                    "duration": 0  # 将在下一步计算
-                }
-
-                lyrics_data["lyrics"].append(lyrics_line)
-
-        # 计算每行歌词的持续时间
-        sorted_lyrics = sorted(lyrics_data["lyrics"], key=lambda x: x["timestamp"])
-        for i in range(len(sorted_lyrics) - 1):
-            sorted_lyrics[i]["duration"] = sorted_lyrics[i + 1]["timestamp"] - sorted_lyrics[i]["timestamp"]
-
-        # 最后一行歌词持续时间设为默认值
-        if sorted_lyrics:
-            sorted_lyrics[-1]["duration"] = 5.0
-
-        # 更新数据库字段
-        self.lyrics_dict = lyrics_data
-        return lyrics_data
-
-    def get_lyrics_at_time(self, current_time):
-        """获取指定时间点应显示的歌词"""
-        lyrics_data = self.lyrics_dict
-        if not lyrics_data or "lyrics" not in lyrics_data:
-            return None
-
-        current_line = None
-        next_line = None
-
-        for i, line in enumerate(lyrics_data["lyrics"]):
-            if line["timestamp"] <= current_time < (line["timestamp"] + line["duration"]):
-                current_line = line
-                if i + 1 < len(lyrics_data["lyrics"]):
-                    next_line = lyrics_data["lyrics"][i + 1]
-                break
-
-        return {
-            "current": current_line,
-            "next": next_line
-        }
-
-    def get_metadata(self):
-        """获取歌词元数据"""
-        lyrics_data = self.lyrics_dict
-        return lyrics_data.get("metadata", {}) if lyrics_data else {}
 
 class Download(db.Model):
     __tablename__ = 'downloads'
@@ -193,9 +156,10 @@ class Download(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     download_time = db.Column(db.DateTime, default=datetime.utcnow)
     source_url = db.Column(db.String(255))
+    status = db.Column(db.String(20), default='pending')  # 新增状态字段
 
-    song = db.relationship('Song', backref=db.backref('downloads', lazy=True))
-    user = db.relationship('User', backref=db.backref('downloads', lazy=True))
+    song = db.relationship('Song', back_populates='downloads')
+    user = db.relationship('User', back_populates='downloads')
 
     def __repr__(self):
         return f'<Download {self.id}>'

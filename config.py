@@ -16,6 +16,6 @@ class Config:
     MAIL_PASSWORD = 'dplgpbucymmqdigb'  # 替换为您的QQ邮箱授权码
     MAIL_DEFAULT_SENDER = ('JJ20音乐分享', '2471569585@qq.com')  # 替换为您的QQ邮箱
 
-    UPLOAD_FOLDER = os.path.join(basedir, 'app', 'static', 'uploads')
+    UPLOAD_FOLDER = os.path.join(basedir, 'app', 'static')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max-limit
     # ... 其他配置 ...

@@ -37,53 +37,135 @@ def welcome():
 def index():
     return render_template('main.html')
 
+
 @main.route('/api/songs', methods=['GET'])
 def get_songs():
     songs = Song.query.options(
-        joinedload(Song.artist),
+        joinedload(Song.artists),  # 使用新的多对多关系
         joinedload(Song.album)
     ).order_by(Song.created_at.desc()).limit(8).all()
 
     songs_data = [{
         'id': song.id,
         'name': song.name,
-        'artist': song.artist.name if song.artist else 'Unknown Artist',
+        'artist': ', '.join(song.artist_names),  # 使用新添加的属性方法
         'album': song.album.name if song.album else 'Unknown Album',
-        'image_url':  song.image_url,
-        'duration': song.duration
+        'image_url': song.image_url,
+        'duration': song.duration,
+        'file_path': song.get_file_path()  # 使用新添加的方法
     } for song in songs]
 
     return jsonify(songs_data)
 
-# 获取全部歌曲信息
+
 @main.route('/api/all_songs', methods=['GET'])
 def get_all_songs():
     songs = Song.query.options(
-        joinedload(Song.artist),
+        joinedload(Song.artists),
         joinedload(Song.album)
     ).order_by(Song.created_at.desc()).all()
 
     songs_data = [{
         'id': song.id,
         'name': song.name,
-        'artist': song.artist.name if song.artist else 'Unknown Artist',
+        'artist': ', '.join(song.artist_names),
         'album': song.album.name if song.album else 'Unknown Album',
         'image_url': song.image_url,
-        'duration': song.duration
+        'duration': song.duration,
+        'file_path': song.get_file_path()
     } for song in songs]
 
     return jsonify(songs_data)
 
+
 @main.route('/api/play/<int:song_id>')
 def play_song(song_id):
+    """
+    处理音频文件的播放请求
+
+    Args:
+        song_id: 歌曲ID
+
+    Returns:
+        成功时返回音频文件流，失败时返回错误信息和状态码
+    """
+    try:
+        # 使用 joinedload 优化查询，减少数据库查询次数
+        song = Song.query.options(
+            joinedload(Song.artists),
+            joinedload(Song.album)
+        ).get_or_404(song_id)
+
+        if not song.file_path:
+            abort(404, description="Song file not found")
+
+        # 获取文件路径
+        filename = os.path.basename(song.file_path)
+        file_directory = os.path.join(current_app.config['UPLOAD_FOLDER'], 'songs')
+        file_path = os.path.join(file_directory, filename)
+
+        if not os.path.exists(file_path):
+            abort(404, description="Audio file not found")
+
+        # 根据文件扩展名确定MIME类型
+        mime_type = {
+            'mp3': 'audio/mpeg',
+            'wav': 'audio/wav',
+            'ogg': 'audio/ogg',
+            'm4a': 'audio/mp4'
+        }.get(filename.rsplit('.', 1)[1].lower(), 'application/octet-stream')
+
+        return send_from_directory(
+            file_directory,
+            filename,
+            mimetype=mime_type,
+            as_attachment=False
+        )
+
+    except Exception as e:
+        abort(500, description="Internal server error")
+
+
+@main.route('/api/download', methods=['POST'])
+def download():
+    """下载歌曲"""
+    data = request.json
+    song_name = data.get('song')
+
+    if not song_name:
+        return jsonify({'success': False, 'message': '歌曲名称不能为空'})
+
+    # 不传入用户ID进行下载
+    success, message = download_song(song_name)
+
+    if success:
+        # 查找最新下载的歌曲
+        song = Song.query.filter_by(name=song_name).first()
+        if song:
+            song_data = {
+                'id': song.id,
+                'name': song.name,
+                'artist': ', '.join(song.artist_names),
+                'album': song.album.name if song.album else 'Unknown Album',
+                'image_url': song.image_url,
+                'duration': song.duration,
+                'file_path': song.get_file_path()
+            }
+            return jsonify({
+                'success': True,
+                'message': '下载成功',
+                'song': song_data
+            })
+
+    return jsonify({'success': False, 'message': message})
+
+
+@main.route('/api/songs/<int:song_id>/lyrics')
+def get_song_lyrics(song_id):
     song = Song.query.get_or_404(song_id)
-
-    # 假设你在Song模型中有一个file_name字段，存储实际的文件名（包括扩展名）
-    if not song.name:
-        return "Song file not found", 404
-
-    songs_dir = os.path.join(current_app.root_path, 'static', 'songs')
-    return send_from_directory(songs_dir, str(song.name) + '.mp3')
+    if not song.lyrics:
+        return jsonify({'lyrics': []})
+    return jsonify({'lyrics': song.lyrics_dict})
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -166,7 +248,8 @@ def register():
                         image = Image.open(form.avatar.data)
                         image = image.convert('RGB')  # Convert to RGB if it's not
                         avatar_filename = f"avatar_{new_user.id}_{int(time.time())}.png"
-                        avatar_path = os.path.join(current_app.config['UPLOAD_FOLDER'], avatar_filename)
+                        avatar_directory = os.path.join(current_app.config['UPLOAD_FOLDER'], 'uploads')
+                        avatar_path = os.path.join(avatar_directory, avatar_filename)
                         image.save(avatar_path, format="PNG")
                         new_user.avatar_url = avatar_filename
                     except Exception as e:
@@ -305,37 +388,31 @@ def reset_password():
 
 @main.route('/api/search')
 def search():
+    """搜索在线歌曲"""
     query = request.args.get('q', '')
+    if not query:
+        return jsonify([])
+
     results = audio_id_list(query)
     songs = []
     if results:
         file_names, emixsong_ids = results
-        for emixsong_id in emixsong_ids:
+        for i, emixsong_id in enumerate(emixsong_ids):
             response = images_download(emixsong_id)
-            if response:
+            if response and response.ok:
                 content = response.json().get('data', {})
                 songs.append({
                     'title': content.get('audio_name', ''),
                     'artist': content.get('author_name', '未知艺术家'),
-                    'image_url': content.get('img', ''),
                     'album': content.get('album_name', '未知专辑'),
                     'duration': int(int(content.get('timelength', 0)) / 1000),
-                    'emixsong_id': emixsong_id
+                    'image_url': content.get('img', ''),
+                    'emixsong_id': emixsong_id,
+                    'file_name': file_names[i]
                 })
+
     return jsonify(songs)
 
-
-@main.route('/api/download', methods=['POST'])
-def download():
-    data = request.json
-    song_name = f"{data['song']}"
-    success, message = download_song(song_name)
-    return jsonify({'success': success, 'message': message})
-
-@main.route('/api/songs/<int:song_id>/lyrics')
-def get_song_lyrics(song_id):
-    song = Song.query.get_or_404(song_id)
-    return jsonify(song.import_krc_lyrics(song.lyrics))
 
 
 
