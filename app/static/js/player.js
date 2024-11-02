@@ -19,7 +19,6 @@ const currentAlbumArt = document.getElementById('current-album-art');
 // 创建播放器实例并初始化
 document.addEventListener('DOMContentLoaded', () => {
     const player = new PlayerController();
-    player.initializeEventListeners();
 
     // 初始化歌词管理器
     const lyricsContainer = document.getElementById('lyrics-container');
@@ -70,7 +69,9 @@ class PlayerController {
         this.initializePlaylist();
         this.fetchSongs();
         this.restorePlayerState();
+        this.initializeEventListeners()
     }
+
 
     // 初始化时间显示
     initializeTimeDisplay() {
@@ -127,6 +128,169 @@ class PlayerController {
         // 尝试从本地存储恢复播放列表
         this.loadPlaylistFromStorage();
     }
+        // 初始化歌曲列表
+    initializeSongList() {
+    const songListContainer = document.getElementById('song-list-container');
+    if (!songListContainer) return;
+
+    songListContainer.innerHTML = '';
+
+    this.displayedSongs.forEach((song, index) => {
+        const songElement = document.createElement('div');
+        songElement.classList.add('song-item');
+        songElement.dataset.songId = song.id;
+        songElement.innerHTML = `
+            <img src="${song.image_url || '/static/images/default-album.png'}" alt="${song.name} album art">
+            <div class="song-info">
+                <h4>${song.name}</h4>
+                <div class="song-albumname">${song.album}</div>
+                <p>${song.artist}</p>
+            </div>
+            <div class="song-duration">${this.formatTime(song.duration)}</div>
+            <div class="song-controls">
+                <button class="play-button" title="播放">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="download-button" title="下载">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="add-to-playlist" title="添加到播放列表">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        `;
+
+        // 播放按钮事件
+        songElement.querySelector('.play-button').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.playSong(index, true);
+        });
+
+        // 下载按钮事件
+        songElement.querySelector('.download-button').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await this.downloadSong(song.name);
+        });
+
+        // 添加到播放列表按钮事件
+        songElement.querySelector('.add-to-playlist').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.addToPlaylist(song);
+        });
+
+        songListContainer.appendChild(songElement);
+    });
+}
+        initializeEventListeners() {
+        // 播放器时间更新事件
+        audioPlayer.addEventListener('timeupdate', () => {
+            const currentTime = audioPlayer.currentTime;
+            const duration = audioPlayer.duration;
+            const currentSongIndex = window.player.currentSongIndex;
+
+            // 设置window参数保存歌曲播放进度
+            localStorage.setItem('currentTime', currentTime);
+            localStorage.setItem('songIndex', currentSongIndex);
+
+            // 更新进度条
+            const progress = (currentTime / duration) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            // 更新时间显示
+            this.currentTimeDisplay.textContent = this.formatTime(currentTime);
+            this.durationDisplay.textContent = this.formatTime(duration);
+
+            // 更新歌词
+            if (this.lyricsManager) {
+                this.lyricsManager.updateTime(currentTime);
+            }
+        });
+
+        // 播放结束事件
+        audioPlayer.addEventListener('ended', () => {
+            this.playNext();
+        });
+
+        // 进度条点击事件
+        progressContainer.addEventListener('click', (e) => {
+            const clickPosition = (e.clientX - progressContainer.getBoundingClientRect().left) / progressContainer.offsetWidth;
+            audioPlayer.currentTime = clickPosition * audioPlayer.duration;
+        });
+
+        // 播放/暂停按钮事件
+        playPauseBtn.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            } else {
+                audioPlayer.pause();
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            }
+        });
+
+        // 上一首/下一首按钮事件
+        prevBtn.addEventListener('click', () => this.playPrev());
+        nextBtn.addEventListener('click', () => this.playNext());
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            switch (e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    playPauseBtn.click();
+                    break;
+                case 'ArrowLeft':
+                    prevBtn.click();
+                    break;
+                case 'ArrowRight':
+                    nextBtn.click();
+                    break;
+            }
+        });
+        window.addEventListener('beforeunload', () => {
+            this.savePlayerState();
+    });
+    }
+
+    async downloadSong(songName) {
+        const downloadButton = document.querySelector(`[data-song="${songName}"] .download-button`);
+        if (downloadButton) {
+            downloadButton.disabled = true;
+            downloadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+        try {
+
+            const response = await fetch('/api/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ song: songName })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                if (data.song) {
+                    // 添加到播放列表
+                    this.addToPlaylist(data.song);
+                    // 刷新歌曲列表
+                    await this.fetchSongs();
+                }
+            }
+        } catch (error) {
+            console.error('下载出错:', error);
+        } finally {
+            if (downloadButton) {
+                downloadButton.disabled = false;
+                downloadButton.innerHTML = '<i class="fas fa-download"></i>';
+            }
+        }
+    }
+
 
     // 获取歌曲数据
     async fetchSongs() {
@@ -166,51 +330,6 @@ class PlayerController {
     }
 
 
-
-
-    // 初始化歌曲列表
-    initializeSongList() {
-        const songListContainer = document.getElementById('song-list-container');
-        if (!songListContainer) return;
-
-        songListContainer.innerHTML = ''; // 清空现有内容
-
-        this.displayedSongs.forEach((song, index) => {
-            const songElement = document.createElement('div');
-            songElement.classList.add('song-item');
-            songElement.dataset.songId = song.id;
-            songElement.innerHTML = `
-                <img src="${song.image_url}" alt="${song.name} album art">
-                <div class="song-info">
-                    <h4>${song.name}</h4>
-                    <div class="song-albumname">${song.album}</div>
-                    <p>${song.artist}</p>
-                </div>
-                <div class="song-duration">${this.formatTime(song.duration)}</div>
-                <button class="play-button" title="播放">
-                    <i class="fas fa-play"></i>
-                </button>
-                <button class="add-to-playlist" title="添加到播放列表">
-                    <i class="fas fa-plus"></i>
-                </button>
-            `;
-
-            // 添加播放事件
-            songElement.querySelector('.play-button').addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.playSong(index, true);
-            });
-
-            // 添加加入播放列表事件
-            songElement.querySelector('.add-to-playlist').addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.addToPlaylist(song);
-            });
-
-            songListContainer.appendChild(songElement);
-        });
-    }
-
     // 时间格式化
     formatTime(seconds) {
         if (isNaN(seconds)) return '0:00';
@@ -248,28 +367,14 @@ class PlayerController {
         this.playlistContainer.classList.toggle('show');
     }
 
-    // 显示通知
-    showNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.textContent = message;
-        document.body.appendChild(notification);
-
-        // 2秒后移除通知
-        setTimeout(() => {
-            notification.remove();
-        }, 2000);
-    }
 
     // PlayerController 类的播放控制和播放列表管理方法
     async playSong(index, isFromDisplayList = true) {
         let song;
         if (isFromDisplayList) {
-            // 如果是从显示列表播放，需要找到对应的在完整列表中的索引
             song = this.displayedSongs[index];
             this.currentSongIndex = this.allSongs.findIndex(s => s.id === song.id);
         } else {
-            // 直接播放完整列表中的歌曲
             song = this.allSongs[index];
             this.currentSongIndex = index;
         }
@@ -277,22 +382,17 @@ class PlayerController {
         if (!song) return;
 
         try {
-            audioPlayer.src = `/api/play/${song.id}`;
-            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-            await audioPlayer.play();
-            this.updatePlayerInfo(song);
-
-            // 获取并显示歌词
-            const lyricsResponse = await fetch(`/api/songs/${song.id}/lyrics`);
-            if (lyricsResponse.ok) {
-                const data = await lyricsResponse.json();
-                if (this.lyricsManager) {
-                    this.lyricsManager.setLyrics(data.lyrics);
-                    document.getElementById('lyrics-section').style.display = 'block';
-                }
+            // 检查歌曲是否已下载
+            if (song) {
+                audioPlayer.src = `/api/play/${song.id}`;
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                await audioPlayer.play();
+                this.updatePlayerInfo(song);
             }
+
         } catch (error) {
             console.error('播放出错:', error);
+            this.handlePlayError();
         }
     }
 
@@ -302,9 +402,7 @@ class PlayerController {
             this.playlist.push(song);
             this.updatePlaylistView();
             this.savePlaylistToStorage();
-            this.showNotification('已添加到播放列表');
         } else {
-            this.showNotification('该歌曲已在播放列表中');
         }
     }
 
@@ -368,7 +466,6 @@ class PlayerController {
         this.isPlayingFromPlaylist = false;
         this.updatePlaylistView();
         this.savePlaylistToStorage();
-        this.showNotification('播放列表已清空');
     }
 
     updatePlaylistView() {
@@ -513,7 +610,6 @@ class PlayerController {
     }
 
     handlePlayError() {
-        this.showNotification('无法播放此歌曲，请稍后再试');
         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
     }
 
@@ -556,76 +652,5 @@ class PlayerController {
         }));
     }
     }
-    initializeEventListeners() {
-        // 播放器时间更新事件
-        audioPlayer.addEventListener('timeupdate', () => {
-            const currentTime = audioPlayer.currentTime;
-            const duration = audioPlayer.duration;
-            const currentSongIndex = window.player.currentSongIndex;
 
-            // 设置window参数保存歌曲播放进度
-            localStorage.setItem('currentTime', currentTime);
-            localStorage.setItem('songIndex', currentSongIndex);
-
-            // 更新进度条
-            const progress = (currentTime / duration) * 100;
-            progressBar.style.width = `${progress}%`;
-
-            // 更新时间显示
-            this.currentTimeDisplay.textContent = this.formatTime(currentTime);
-            this.durationDisplay.textContent = this.formatTime(duration);
-
-            // 更新歌词
-            if (this.lyricsManager) {
-                this.lyricsManager.updateTime(currentTime);
-            }
-        });
-
-        // 播放结束事件
-        audioPlayer.addEventListener('ended', () => {
-            this.playNext();
-        });
-
-        // 进度条点击事件
-        progressContainer.addEventListener('click', (e) => {
-            const clickPosition = (e.clientX - progressContainer.getBoundingClientRect().left) / progressContainer.offsetWidth;
-            audioPlayer.currentTime = clickPosition * audioPlayer.duration;
-        });
-
-        // 播放/暂停按钮事件
-        playPauseBtn.addEventListener('click', () => {
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-            } else {
-                audioPlayer.pause();
-                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-            }
-        });
-
-        // 上一首/下一首按钮事件
-        prevBtn.addEventListener('click', () => this.playPrev());
-        nextBtn.addEventListener('click', () => this.playNext());
-
-        // 键盘快捷键
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-
-            switch (e.code) {
-                case 'Space':
-                    e.preventDefault();
-                    playPauseBtn.click();
-                    break;
-                case 'ArrowLeft':
-                    prevBtn.click();
-                    break;
-                case 'ArrowRight':
-                    nextBtn.click();
-                    break;
-            }
-        });
-        window.addEventListener('beforeunload', () => {
-            this.savePlayerState();
-    });
-    }
 }
