@@ -15,6 +15,7 @@ const progressContainer = document.querySelector('.progress-bar');
 const currentSongTitle = document.getElementById('current-song-title');
 const currentSongArtist = document.getElementById('current-song-artist');
 const currentAlbumArt = document.getElementById('current-album-art');
+const likeButton = document.querySelector('.like-button');
 
 // 创建播放器实例并初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -56,7 +57,6 @@ class PlayerController {
         this.allSongs = [];        // 数据库中的所有歌曲
         this.currentSongIndex = -1;
         this.playMode = PlayMode.SEQUENCE;
-        this.lyricsManager = null;
 
         // 播放列表相关属性
         this.playlist = [];
@@ -69,7 +69,15 @@ class PlayerController {
         this.initializePlaylist();
         this.fetchSongs();
         this.restorePlayerState();
-        this.initializeEventListeners()
+        this.initializeLikeButton();
+        this.initializeEventListeners();
+        // 添加点击事件监听
+        if (likeButton) {
+            likeButton.addEventListener('click', () => {
+                console.log("Like button clicked!");
+                this.toggleLike();
+            });
+        }
     }
 
 
@@ -147,17 +155,12 @@ class PlayerController {
                 <p>${song.artist}</p>
             </div>
             <div class="song-duration">${this.formatTime(song.duration)}</div>
-            <div class="song-controls">
                 <button class="play-button" title="播放">
                     <i class="fas fa-play"></i>
-                </button>
-                <button class="download-button" title="下载">
-                    <i class="fas fa-download"></i>
                 </button>
                 <button class="add-to-playlist" title="添加到播放列表">
                     <i class="fas fa-plus"></i>
                 </button>
-            </div>
         `;
 
         // 播放按钮事件
@@ -166,11 +169,6 @@ class PlayerController {
             this.playSong(index, true);
         });
 
-        // 下载按钮事件
-        songElement.querySelector('.download-button').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            await this.downloadSong(song.name);
-        });
 
         // 添加到播放列表按钮事件
         songElement.querySelector('.add-to-playlist').addEventListener('click', (e) => {
@@ -181,6 +179,18 @@ class PlayerController {
         songListContainer.appendChild(songElement);
     });
 }
+        initializeLikeButton() {
+        // 添加喜欢按钮到控制区
+        const controls = document.querySelector('.controls');
+        this.likeButton = document.createElement('button');
+        this.likeButton.className = 'like-button';
+        this.likeButton.innerHTML = '<i class="far fa-heart"></i><span class="likes-count">0</span>';
+        this.likeButton.title = '喜欢';
+        controls.appendChild(this.likeButton);
+
+        // 绑定点击事件
+        this.likeButton.addEventListener('click', () => this.toggleLike());
+    }
         initializeEventListeners() {
         // 播放器时间更新事件
         audioPlayer.addEventListener('timeupdate', () => {
@@ -254,42 +264,6 @@ class PlayerController {
     });
     }
 
-    async downloadSong(songName) {
-        const downloadButton = document.querySelector(`[data-song="${songName}"] .download-button`);
-        if (downloadButton) {
-            downloadButton.disabled = true;
-            downloadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        }
-
-        try {
-
-            const response = await fetch('/api/download', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ song: songName })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                if (data.song) {
-                    // 添加到播放列表
-                    this.addToPlaylist(data.song);
-                    // 刷新歌曲列表
-                    await this.fetchSongs();
-                }
-            }
-        } catch (error) {
-            console.error('下载出错:', error);
-        } finally {
-            if (downloadButton) {
-                downloadButton.disabled = false;
-                downloadButton.innerHTML = '<i class="fas fa-download"></i>';
-            }
-        }
-    }
 
 
     // 获取歌曲数据
@@ -328,7 +302,6 @@ class PlayerController {
     console.error('获取歌曲数据时出错:', error);
     }
     }
-
 
     // 时间格式化
     formatTime(seconds) {
@@ -394,8 +367,27 @@ class PlayerController {
             console.error('播放出错:', error);
             this.handlePlayError();
         }
+        try {
+        // 获取并显示歌词
+        if (this.lyricsManager) {
+            const lyricsResponse = await fetch(`/api/songs/${song.id}/lyrics`);
+            if (lyricsResponse.ok) {
+                const data = await lyricsResponse.json();
+                if (data.lyrics) {
+                    this.lyricsManager.setLyrics(data.lyrics);
+                    document.getElementById('lyrics-section').style.display = 'block';
+                } else {
+                    this.lyricsManager.clear();
+                }
+            }
+        }
+    } catch (error) {
+        console.error('获取歌词失败:', error);
+        this.lyricsManager.clear();
     }
-
+    this.lyricsManager.updateTime(localStorage.getItem('currentTime'));
+    await this.loadLikeStatus(song.id);
+    }
     // 播放列表管理方法
     addToPlaylist(song) {
         if (!this.playlist.some(item => item.id === song.id)) {
@@ -501,7 +493,71 @@ class PlayerController {
             playlistItems.appendChild(itemElement);
         });
     }
+    // 歌曲喜欢功能逻辑的实现
+    async toggleLike() {
+        let song = this.allSongs[this.currentSongIndex]
 
+        if (!song)
+            return;
+
+        try {
+            console.log("Toggling like for current song:", this.currentSongIndex);
+            const response = await fetch(`/api/songs/${song.id}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+            console.log("Like response:", data);
+
+            if (data.status === 'success') {
+                this.updateLikeButton(data.is_liked, data.likes_count);
+                // 更新列表中的对应按钮
+                this.updateSongListLikeButton(song.id, data.is_liked, data.likes_count);
+            }
+        } catch (error) {
+            console.error('Error toggling like:', error);
+        }
+    }
+    async loadLikeStatus(songId) {
+        try {
+            const response = await fetch(`/api/songs/${songId}/like-status`);
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                this.updateLikeButton(data.is_liked, data.likes_count);
+            }
+        } catch (error) {
+            console.error('Error loading like status:', error);
+        }
+    }
+
+    updateLikeButton(isLiked, likesCount) {
+        const icon = this.likeButton.querySelector('i');
+        const count = this.likeButton.querySelector('.likes-count');
+
+        this.likeButton.classList.toggle('active', isLiked);
+        icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+        count.textContent = likesCount;
+    }
+
+    updateSongListLikeButton(songId, isLiked, likesCount) {
+        const songItem = document.querySelector(`.song-item[data-song-id="${songId}"]`);
+        if (songItem) {
+            const likeButton = songItem.querySelector('.like-button');
+            if (likeButton) {
+                const icon = likeButton.querySelector('i');
+                const count = likeButton.querySelector('.likes-count');
+
+                likeButton.classList.toggle('active', isLiked);
+                icon.className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+                count.textContent = likesCount;
+            }
+        }
+    }
     // 播放控制方法
     async playFromPlaylist(index) {
         if (index >= 0 && index < this.playlist.length) {
@@ -654,3 +710,31 @@ class PlayerController {
     }
 
 }
+
+// 确保正确引入了 Cropper.js
+// document.addEventListener('DOMContentLoaded', () => {
+//   const cropperModal = document.getElementById('cropperModal');
+//   const closeCropperModal = document.getElementById('closeCropperModal');
+//
+//   // 修复模态框显示隐藏
+//   if (closeCropperModal) {
+//     closeCropperModal.addEventListener('click', () => {
+//       cropperModal.classList.add('hidden');
+//     });
+//   }
+//
+//   // 点击模态框外部关闭
+//   cropperModal.addEventListener('click', (e) => {
+//     if (e.target === cropperModal) {
+//       cropperModal.classList.add('hidden');
+//     }
+//   });
+//
+//   // ESC 键关闭模态框
+//   document.addEventListener('keydown', (e) => {
+//     if (e.key === 'Escape' && !cropperModal.classList.contains('hidden')) {
+//       cropperModal.classList.add('hidden');
+//     }
+//   });
+// });
+

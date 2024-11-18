@@ -1,10 +1,119 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Title</title>
-</head>
-<body>
+{% extends 'admin/master.html' %}
 
-</body>
-</html>
+{% block head_css %}
+    {{ super() }}
+    <style>
+        .dashboard-stats {
+            padding: 20px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .stat-title {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        .recent-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .recent-title {
+            color: #495057;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .total-stats {
+            margin-bottom: 30px;
+        }
+        .recent-stats {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-icon {
+            float: right;
+            font-size: 2.5rem;
+            opacity: 0.1;
+            margin-top: -40px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="dashboard-stats">
+    <h2 class="h3 mb-4">Music Platform Overview</h2>
+
+    <!-- 总计统计 -->
+    <div class="total-stats">
+        <h3 class="h5 mb-3">Overall Statistics</h3>
+        <div class="grid-container">
+            <div class="stat-card">
+                <div class="stat-title">Total Users</div>
+                <div class="stat-value">{{ stats.total_users }}</div>
+                <i class="fas fa-users stat-icon"></i>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Artists</div>
+                <div class="stat-value">{{ stats.total_artists }}</div>
+                <i class="fas fa-microphone stat-icon"></i>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Albums</div>
+                <div class="stat-value">{{ stats.total_albums }}</div>
+                <i class="fas fa-compact-disc stat-icon"></i>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Songs</div>
+                <div class="stat-value">{{ stats.total_songs }}</div>
+                <i class="fas fa-music stat-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近活动 -->
+    <div class="recent-section">
+        <h3 class="h5 mb-3">Recent Activity (Last 24 Hours)</h3>
+        <div class="grid-container">
+            <div class="recent-stats">
+                <div class="stat-title">New Users</div>
+                <div class="stat-value">{{ stats.recent_users }}</div>
+                <i class="fas fa-user-plus stat-icon"></i>
+            </div>
+            <div class="recent-stats">
+                <div class="stat-title">Downloads</div>
+                <div class="stat-value">{{ stats.recent_downloads }}</div>
+                <i class="fas fa-download stat-icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加 Font Awesome 图标支持 -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+{% endblock %}

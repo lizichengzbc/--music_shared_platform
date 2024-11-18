@@ -33,14 +33,37 @@
             <div id="search-suggestions" class="search-suggestions"></div>
         </div>
         <div class="user-actions">
-            {% if current_user.is_authenticated %}
-                <img src="{{ url_for('static', filename='uploads/' + current_user.avatar_url) if current_user.avatar_url else url_for('static', filename='images/default-default-album.png') }}" alt="{{ current_user.username }}" class="user-avatar">
-                <a href="{{ url_for('main.logout') }}" class="btn-user">登出</a>
-            {% else %}
-                <a href="{{ url_for('main.login') }}" class="btn-user">登录</a>
-                <a href="{{ url_for('main.register') }}" class="btn-user">注册</a>
-            {% endif %}
+    {% if current_user.is_authenticated %}
+        <div class="user-name" >{{current_user.username}}</div>
+        <div class="user-dropdown">
+            <img src="{{ url_for('static', filename='uploads/' + current_user.avatar_url) if current_user.avatar_url else url_for('static', filename='images/default-avatar.png') }}"
+                 alt="{{ current_user.username }}"
+                 class="user-avatar">
+            <div class="dropdown-menu">
+                <div class="dropdown-header">
+                    <p class="username">{{ current_user.username }}</p>
+                    <p class="email">{{ current_user.email }}</p>
+                </div>
+                <a href="{{ url_for('main.user_profile') }}" class="dropdown-item">
+                    <i class="fas fa-user"></i>修改个人信息
+                </a>
+{#                <a href="{{ url_for('main.favorites') }}" class="dropdown-item">#}
+{#                    <i class="fas fa-heart"></i>我喜欢#}
+{#                </a>#}
+{#                <a href="{{ url_for('main.settings') }}" class="dropdown-item">#}
+{#                    <i class="fas fa-cog"></i>设置#}
+{#                </a>#}
+                <div class="dropdown-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="dropdown-item text-danger">
+                    <i class="fas fa-sign-out-alt"></i>退出登录
+                </a>
+            </div>
         </div>
+    {% else %}
+        <a href="{{ url_for('main.login') }}" class="btn-user">登录</a>
+        <a href="{{ url_for('main.register') }}" class="btn-user">注册</a>
+    {% endif %}
+</div>
     </div>
 </header>
 
@@ -50,40 +73,53 @@
             <h2>搜索结果</h2>
             <div id="results-container"></div>
         </section>
-
-        <section class="photo-of-the-day">
-            <h2>今日之曲</h2>
-            <div class="photo-count">10/15</div>
-            <img src="{{ url_for('static', filename='images/oneday.png') }}" alt="Today's Song">
-            <div class="photo-info">
-                <h3>我渴望的 All I Ever Wanted</h3>
-            </div>
-            <p>每日一曲，从日常的编辑推荐中再次精选而出，是街声给每一首好作品的至高激赏与鼓励。</p>
-        </section>
+{##}
+{#        <section class="photo-of-the-day">#}
+{#            <h2>今日之曲</h2>#}
+{#            <div class="photo-count">10/15</div>#}
+{#            <img src="{{ url_for('static', filename='images/oneday.png') }}" alt="Today's Song">#}
+{#            <div class="photo-info">#}
+{#                <h3>我渴望的 All I Ever Wanted</h3>#}
+{#            </div>#}
+{#            <p>每日一曲，从日常的编辑推荐中再次精选而出，是街声给每一首好作品的至高激赏与鼓励。</p>#}
+{#        </section>#}
 
         <section class="song-list">
-            <div class="song-list-header">
-                <h3>最新歌曲</h3>
-                <a href="#">查看更多</a>
-            </div>
-            <div id="song-list-container">
-                {% for song in songs %}
-                <div class="song-item" data-song-id="{{ song.id }}">
-                    <img src="{{ song.image_url }}" alt="{{ song.name }} album art">
-                    <div class="song-info">
-                        <h4>{{ song.name }}</h4>
-                        <p>{{ song.artist }}</p>
+                <div class="top-line"></div>
+                <div class="corner-right"></div>
+                <div id="song-list-container">
+                    {% for song in songs %}
+                    <div class="song-item" data-song-id="{{ song.id }}">
+                        <img src="{{ song.image_url }}" alt="{{ song.name }} album art">
+                        <div class="song-info">
+                            <h4>{{ song.name }}</h4>
+                            <p>{{ song.artist }}</p>
+                        </div>
+                        <div class="song-albumname">{{ song.album_name }}</div>
+                        <div class="song-duration">{{ '%d:%02d'|format(song.duration//60, song.duration%60) }}</div>
+                        <!-- 添加喜欢按钮 -->
+                        <button class="like-button" onclick="player.toggleLike({{ song.id }})" title="喜欢">
+                            <i class="far fa-heart"></i>
+                        </button>
+                        <button class="add-to-playlist" onclick="player.addToPlaylist(song)">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="play-button" onclick="player.playSong({{ song.id }})">
+                            <i class="fas fa-play"></i>
+                        </button>
                     </div>
-                    <div class="song-albumname">{{ song.album_name }}</div>
-                    <div class="song-duration">{{ '%d:%02d'|format(song.duration//60, song.duration%60) }}</div>
-                    <button class="add-to-playlist" onclick="player.addToPlaylist(song)">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <button class="play-button" onclick="playSong({{ song.id }}, '{{ song.name }}', '{{ song.artist }}')">
-                        <i class="fas fa-play"></i>
-                    </button>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+             <div class="load-more-wrapper">
+        <div class="fade-overlay"></div>
+        <div class="load-more-container">
+            <button id="load-more" class="load-more-btn">
+                <i class="fas fa-chevron-down"></i>
+                <span>展开更多</span>
+            </button>
+            <div id="songs-status" class="songs-status">
+                <i class="fas fa-music"></i>
+                <span>已加载 0 首歌曲</span>
             </div>
         </section>
     </div>
@@ -104,6 +140,7 @@
         <button id="prev-track"><i class="fas fa-step-backward"></i></button>
         <button id="play-pause" class="play-pause"><i class="fas fa-play"></i></button>
         <button id="next-track"><i class="fas fa-step-forward"></i></button>
+        <!-- 只保留一个喜欢按钮 -->
     </div>
     <div class="progress-container">
         <div class="time-display" id="current-time">0:00</div>
@@ -114,10 +151,13 @@
     </div>
     <audio id="audio-player" style="display: none;"></audio>
 </footer>
+    <div id="notification-container"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script src="{{ url_for('static', filename='js/player.js') }}"></script>
 <script src="{{ url_for('static', filename='js/lyrics.js') }}"></script>
+<script src="{{ url_for('static', filename='js/songsLoading.js') }}"></script>
+{#<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">#}
 {% endblock %}
