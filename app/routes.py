@@ -1,5 +1,4 @@
-import json
-
+from alembic.util import status
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash, \
     send_from_directory, abort, send_file
 from flask_login import login_user, login_required, logout_user, current_user
@@ -9,19 +8,14 @@ from sqlalchemy.orm import joinedload
 from app.models import User, VerificationCode, Song
 from app import db, mail
 from flask_mail import Message
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, FileField, BooleanField
-from wtforms.validators import DataRequired, Email, EqualTo, ValidationError
 import random
 import string
 from datetime import datetime, timedelta
 import re
-import base64
-from io import BytesIO
 from PIL import Image
 import os
 import logging
-from app.forms import RegistrationForm,RequestResetForm,ResetPasswordForm,LoginForm
+from app.forms import RegistrationForm, RequestResetForm, ResetPasswordForm, LoginForm, ProfileForm
 import time
 from pytz import timezone
 from app.music_downloader import download_song, audio_id_list, images_download
@@ -58,6 +52,41 @@ def get_songs():
     return jsonify(songs_data)
 
 
+@main.route('/api/songsLoading')
+def load_more_songs():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 8, type=int)
+
+    # 计算偏移量
+    offset = (page - 1) * per_page
+
+    # 查询歌曲
+    songs = Song.query.options(
+        joinedload(Song.artists),
+        joinedload(Song.album)
+    ).order_by(Song.created_at.desc()).offset(offset).limit(per_page).all()
+
+    # 获取总数
+    total_songs = Song.query.count()
+    total_loaded = min(offset + per_page, total_songs)
+
+    songs_data = [{
+        'id': song.id,
+        'name': song.name,
+        'artist': ', '.join(song.artist_names),
+        'album': song.album.name if song.album else 'Unknown Album',
+        'image_url': song.image_url,
+        'duration': song.duration,
+        'file_path': song.get_file_path()
+    } for song in songs]
+
+    return jsonify({
+        'songs': songs_data,
+        'has_more': total_loaded < total_songs,
+        'total_loaded': total_loaded,
+        'total': total_songs
+    })
+
 @main.route('/api/all_songs', methods=['GET'])
 def get_all_songs():
     songs = Song.query.options(
@@ -77,6 +106,19 @@ def get_all_songs():
 
     return jsonify(songs_data)
 
+@main.route('/api/songs/total', methods=['GET'])
+def get_total_songs():
+    try:
+        total = Song.query.count()
+        return jsonify({
+            'total': total,
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
 
 @main.route('/api/play/<int:song_id>')
 def play_song(song_id):
@@ -90,7 +132,7 @@ def play_song(song_id):
         成功时返回音频文件流，失败时返回错误信息和状态码
     """
     try:
-        # 使用 joinedload 优化查询，减少数据库查询次数
+        # 使用 joined load 优化查询，减少数据库查询次数
         song = Song.query.options(
             joinedload(Song.artists),
             joinedload(Song.album)
@@ -125,6 +167,48 @@ def play_song(song_id):
     except Exception as e:
         abort(500, description="Internal server error")
 
+
+@main.route('/api/songs/<int:song_id>/like', methods=['POST'])
+@login_required
+def toggle_like_song(song_id):
+    song = Song.query.get_or_404(song_id)
+    user = current_user
+
+    if user.has_liked_song(song):
+        user.unlike_song(song)
+        is_liked = False
+    else:
+        user.like_song(song)
+        is_liked = True
+
+    return jsonify({
+        'status': 'success',
+        'is_liked': is_liked,
+        'likes_count': song.likes_count
+    })
+
+@main.route('/api/songs/<int:song_id>/like-status', methods=['GET'])
+@login_required
+def get_song_like_status(song_id):
+    song = Song.query.get_or_404(song_id)
+    return jsonify({
+        'status': 'success',
+        'is_liked': current_user.has_liked_song(song),
+        'likes_count': song.likes_count
+    })
+
+
+@main.route('/api/me/favorites', methods=['GET'])
+@login_required
+def get_my_favorites():
+    page = request.args.get('page', 1, type=int)
+    favorites = current_user.get_favorite_songs(page=page)
+
+    return jsonify({
+        'status': 'success',
+        'total': favorites.total,
+        'songs': [song.to_dict for song in favorites.items]
+    })
 
 @main.route('/api/download', methods=['POST'])
 def download():
@@ -163,9 +247,10 @@ def download():
 @main.route('/api/songs/<int:song_id>/lyrics')
 def get_song_lyrics(song_id):
     song = Song.query.get_or_404(song_id)
+    song.parse_lyrics(song.lyrics)
     if not song.lyrics:
         return jsonify({'lyrics': []})
-    return jsonify({'lyrics': song.lyrics_dict})
+    return jsonify({'lyrics': song.lyrics['lyrics']})
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -345,10 +430,6 @@ def verify_code():
         return jsonify({'error': 'User not found'}), 404
 
 
-@main.route('/profile')
-@login_required
-def profile():
-    return render_template('profile.html', user=current_user)
 
 
 @main.route('/reset_password', methods=['GET', 'POST'])
@@ -413,23 +494,134 @@ def search():
 
     return jsonify(songs)
 
+@main.route('/profile', methods=['GET', 'POST'])
+@login_required
+def user_profile():
+    """个人信息页面"""
+    form = ProfileForm(
+        original_username=current_user.username,
+        original_email=current_user.email,
+        formdata=request.form if request.method == 'POST' else None,
+        obj=current_user if request.method == 'GET' else None
+    )
 
+    if request.method == 'GET':
+        return render_template('profile.html', form=form, user=current_user)
 
+    return render_template('profile.html', form=form, user=current_user)
 
+@main.route('/upload_avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    """头像上传处理"""
+    try:
+        if 'avatar' not in request.files:
+            return jsonify({'success': False, 'message': '没有上传文件'}), 400
 
+        avatar_file = request.files['avatar']
+        if not avatar_file.filename:
+            return jsonify({'success': False, 'message': '没有选择文件'}), 400
 
+        # 验证文件类型
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+        if not ('.' in avatar_file.filename and
+                avatar_file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({'success': False, 'message': '不支持的文件类型'}), 400
 
+        # 保存新头像
+        avatar_filename = save_avatar(avatar_file, current_user)
+        if not avatar_filename:
+            return jsonify({'success': False, 'message': '头像保存失败'}), 500
 
+        # 删除旧头像
+        if current_user.avatar_url:
+            old_avatar_path = os.path.join(
+                current_app.root_path, 'static', 'uploads', current_user.avatar_url
+            )
+            if os.path.exists(old_avatar_path):
+                os.remove(old_avatar_path)
 
+        # 更新数据库
+        current_user.avatar_url = avatar_filename
+        current_user.updated_at = datetime.utcnow()
+        db.session.commit()
 
+        return jsonify({
+            'success': True,
+            'message': '头像更新成功',
+            'avatar_url': url_for('static', filename=f'uploads/{avatar_filename}')
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Avatar update error: {str(e)}")
+        return jsonify({'success': False, 'message': '头像更新失败'}), 500
+
+@main.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    """更新个人信息"""
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
+        errors = {}
+
+        # 验证并更新密码
+        if data.get('current_password'):
+            if not current_user.check_password(data['current_password']):
+                errors['current_password'] = '当前密码错误'
+            elif data.get('new_password'):
+                if not is_strong_password(data['new_password']):
+                    errors['new_password'] = '密码长度至少8位'
+                elif data['new_password'] != data.get('confirm_password'):
+                    errors['confirm_password'] = '两次输入的密码不一致'
+                else:
+                    current_user.set_password(data['new_password'])
+
+        # 验证并更新用户名
+        if 'username' in data and data['username'] != current_user.username:
+            if User.query.filter_by(username=data['username']).first():
+                errors['username'] = '用户名已存在'
+            elif not re.match(r'^[a-zA-Z0-9_\u4e00-\u9fa5]{3,20}$', data['username']):
+                errors['username'] = '用户名格式不正确'
+            else:
+                current_user.username = data['username']
+
+        if errors:
+            return jsonify({
+                'success': False,
+                'message': '更新失败',
+                'errors': errors
+            }), 400
+
+        # 更新性别
+        if 'gender' in data:
+            current_user.gender = data['gender']
+
+        current_user.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': '个人信息更新成功',
+            'data': {
+                'username': current_user.username,
+                'gender': current_user.gender,
+                'updated_at': current_user.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Profile update error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': '更新失败',
+            'error': str(e)
+        }), 500
 
 
 def is_strong_password(password):
-    return (len(password) >= 8 and
-            re.search(r"[A-Z]", password) and
-            re.search(r"[a-z]", password) and
-            re.search(r"\d", password) and
-            re.search(r"[!@#$%^&*(),.?\":{}|<>]", password))
+    return len(password) >= 8
 
 
 def clean_expired_verification_codes():
@@ -437,3 +629,26 @@ def clean_expired_verification_codes():
     for code in expired_codes:
         db.session.delete(code)
     db.session.commit()
+
+
+def save_avatar(file, user):
+    """保存头像文件并返回文件名"""
+    if not file:
+        return None
+    try:
+        image = Image.open(file)
+        image = image.convert('RGB')
+
+        timestamp = int(time.time())
+        filename = f"avatar_{user.id}_{timestamp}.png"
+
+        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads')
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+
+        file_path = os.path.join(upload_dir, filename)
+        image.save(file_path, format="PNG")
+        return filename
+    except Exception as e:
+        current_app.logger.error(f"Error saving avatar: {str(e)}")
+        return None

@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}个人信息 - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-card">
+        <!-- 头像区域 -->
+        <div class="avatar-section">
+            <div class="avatar-wrapper">
+                <div class="upload-progress">
+                    <div class="progress-bar"></div>
+                </div>
+                <img src="{{ url_for('static', filename='uploads/' + user.avatar_url) if user.avatar_url else url_for('static', filename='images/default-avatar.png') }}"
+                     alt="{{ user.username }}"
+                     class="avatar-img">
+                <div class="avatar-overlay">
+                    <label for="avatar-upload" class="avatar-upload-label">
+                        <i class="fas fa-camera"></i>
+                        <span>更换头像</span>
+                    </label>
+                    <input type="file" id="avatar-upload" name="avatar" class="hidden" accept="image/*">
+                </div>
+            </div>
+        </div>
+
+        <!-- 基本信息表单 -->
+        <form id="profile-form" method="POST" class="profile-form">
+            {{ form.csrf_token }}
+
+            <!-- 用户名和邮箱部分 -->
+            <div class="basic-info-section">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        {{ form.username(class="form-input") }}
+                        <button type="button" class="edit-btn" data-field="username">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="field-feedback username-feedback"></div>
+                    {% if form.username.errors %}
+                        <span class="error-message">{{ form.username.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="email">邮箱</label>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        {{ form.email(class="form-input") }}
+                        <button type="button" class="edit-btn" data-field="email">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="field-feedback email-feedback"></div>
+                    {% if form.email.errors %}
+                        <span class="error-message">{{ form.email.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">性别</label>
+                    <div class="input-group">
+                        <i class="fas fa-venus-mars"></i>
+                        {{ form.gender(class="form-select") }}
+                        <button type="button" class="edit-btn" data-field="gender">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户状态信息 -->
+            <div class="info-section">
+                <div class="info-card">
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span class="info-label">注册时间</span>
+                        <span class="info-value">{{ user.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="info-label">最后登录</span>
+                        <span class="info-value">{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '从未登录' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span class="info-label">账号状态</span>
+                        <span class="info-value status-active">活跃</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 密码修改区域 -->
+            <div class="password-section">
+                <button type="button" class="password-toggle">
+                    <i class="fas fa-lock"></i>
+                    <span>修改密码</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+
+                <div class="password-fields hidden">
+                    <div class="form-group">
+                        <label for="current_password">当前密码</label>
+                        <div class="input-group">
+                            <i class="fas fa-key"></i>
+                            {{ form.current_password(class="form-input", placeholder="请输入当前密码") }}
+                            <button type="button" class="toggle-password" data-target="current_password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="field-feedback current-password-feedback"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="new_password">新密码</label>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            {{ form.new_password(class="form-input", placeholder="请输入新密码") }}
+                            <button type="button" class="toggle-password" data-target="new_password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength hidden"></div>
+                        <div class="password-feedback"></div>
+                        <div class="field-feedback new-password-feedback"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">确认新密码</label>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            {{ form.confirm_password(class="form-input", placeholder="请再次输入新密码") }}
+                            <button type="button" class="toggle-password" data-target="confirm_password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="field-feedback confirm-password-feedback"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="save-btn">保存更改</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 通知组件 -->
+<div id="notification" class="notification hidden">
+    <div class="notification-content">
+        <i class="notification-icon"></i>
+        <span class="notification-message"></span>
+        <button class="notification-close">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
+
+<!-- 图片裁剪模态框 -->
+<!-- 图片裁剪模态框 -->
+<div id="cropperModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>调整头像</h3>
+            <button type="button" class="close-btn" id="closeCropperModal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="cropper-container">
+                <img id="cropperImage" src="" alt="待裁剪的图片">
+            </div>
+            <div class="cropper-sidebar">
+                <div class="preview-container"></div>
+                <div class="cropper-controls">
+                    <div class="control-group">
+                        <button type="button" class="control-btn" id="rotateLeft" title="向左旋转">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button type="button" class="control-btn" id="rotateRight" title="向右旋转">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button type="button" class="control-btn" id="reset" title="重置">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="control-group">
+                        <button type="button" class="control-btn" id="zoomOut" title="缩小">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button type="button" class="control-btn" id="zoomIn" title="放大">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button type="button" class="control-btn" id="moveMode" title="移动模式">
+                            <i class="fas fa-arrows-alt"></i>
+                        </button>
+                    </div>
+                    <div class="aspect-ratio-controls">
+                        <button type="button" class="ratio-btn active" data-ratio="1">1:1</button>
+                        <button type="button" class="ratio-btn" data-ratio="4/3">4:3</button>
+                        <button type="button" class="ratio-btn" data-ratio="16/9">16:9</button>
+                        <button type="button" class="ratio-btn" data-ratio="NaN">自由</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="cancel-btn" id="cancelCrop">取消</button>
+            <button type="button" class="confirm-btn" id="confirmCrop">确认</button>
+        </div>
+    </div>
+</div>
+        <div class="modal-footer">
+            <button type="button" class="cancel-btn" id="cancelCrop">取消</button>
+            <button type="button" class="confirm-btn" id="confirmCrop">确认</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+{% endblock %}

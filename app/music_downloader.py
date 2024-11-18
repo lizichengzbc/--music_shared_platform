@@ -41,7 +41,7 @@ def MD5_sign(timestamp: int, audio_id: str) -> str:
         "mid=08e20c779ea827a1cc5cc3995b71f48e",
         "platid=4",
         "srcappid=2919",
-        "token=9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "token=9db06ee5df6575d2c567548362cb837a6fad024d031d30505f2130447be39d06",
         "userid=1188922775",
         "uuid=08e20c779ea827a1cc5cc3995b71f48e",
     ]
@@ -68,7 +68,7 @@ def MD5_sign_search(timestamp: int, music_name: str) -> str:
         "platform=WebFilter",
         "privilege_filter=0",
         "srcappid=2919",
-        "token=9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "token=9db06ee5df6575d2c567548362cb837a6fad024d031d30505f2130447be39d06",
         "userid=1188922775",
         "uuid=08e20c779ea827a1cc5cc3995b71f48e",
     ]
@@ -90,7 +90,7 @@ def fetch_url(audio_id: str) -> Optional[str]:
         "mid": "08e20c779ea827a1cc5cc3995b71f48e",
         "platid": "4",
         "srcappid": "2919",
-        "token": "9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "token": "9db06ee5df6575d2c567548362cb837a6fad024d031d30505f2130447be39d06",
         "userid": "1188922775",
         "uuid": "08e20c779ea827a1cc5cc3995b71f48e",
         "signature": MD5_sign(timestamp, audio_id),
@@ -139,7 +139,7 @@ def audio_id_list(music_name: str) -> Optional[Tuple[List[str], List[str]]]:
         "platform": "WebFilter",
         "privilege_filter": "0",
         "srcappid": "2919",
-        "token": "9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "token": "9db06ee5df6575d2c567548362cb837a6fad024d031d30505f2130447be39d06",
         "userid": "1188922775",
         "uuid": "08e20c779ea827a1cc5cc3995b71f48e",
         "signature": sign,
@@ -177,7 +177,7 @@ def images_download(audio_id: str) -> Optional[requests.Response]:
         "mid": "08e20c779ea827a1cc5cc3995b71f48e",
         "platid": "4",
         "srcappid": "2919",
-        "token": "9db06ee5df6575d2c567548362cb837a59efe69df6a4c7a08956789dac7af3bc",
+        "token": "9db06ee5df6575d2c567548362cb837a6fad024d031d30505f2130447be39d06",
         "userid": "1188922775",
         "uuid": "08e20c779ea827a1cc5cc3995b71f48e",
         "signature": MD5_sign(timestamp, audio_id)
@@ -421,28 +421,25 @@ def download_song(music_name: str, user_id: Optional[int] = None) -> Tuple[bool,
         if not song:
             return False, "保存歌曲信息失败"
 
-        # 如果歌曲已经下载过，直接返回成功
-        if song.file_path and os.path.exists(os.path.join('app/static', song.file_path)):
-            logger.info(f"歌曲已存在: {song.file_path}")
 
-            # 记录下载历史
-            if user_id:
-                download = Download(
-                    song_id=song.id,
-                    user_id=user_id,
-                    status='completed',
-                    source_url=song.file_path
-                )
-                db.session.add(download)
-                song.download_count += 1
-                db.session.commit()
+        # 记录下载历史
+        if user_id:
+            download = Download(
+                song_id=song.id,
+                user_id=user_id,
+                status='completed',
+                source_url=song.file_path
+            )
+            db.session.add(download)
+            song.download_count += 1
+            db.session.commit()
 
             return True, f"歌曲已存在: {song.file_path}"
 
         # 获取下载链接
         time.sleep(2)  # 避免频繁请求
         url_mp3 = fetch_url(emixsong_id)
-        if url_mp3 is None:
+        if url_mp3 is '':
             return False, "获取下载链接失败"
 
         # 下载文件

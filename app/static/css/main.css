@@ -42,7 +42,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    max-width: 1400px;
+    width: 100%;
     margin: 0 auto;
     padding: 0 20px;
     height: 100%;
@@ -59,9 +59,9 @@ body {
 /* 导航链接样式 */
 .nav-links {
     display: flex;
-    justify-content: flex-start;
     flex: 1 1 auto;
-    margin-left: 40px;
+    margin: 40px;
+    justify-content: space-between;
 }
 
 .nav-links a {
@@ -78,10 +78,11 @@ body {
 /* 搜索框样式 */
 .search-wrapper {
     position: relative;
-    width: 350px;
+    width: 450px;
     height: 50px;
     flex: 0 0 auto;
-    margin: 0 20px;
+    margin: 20px;
+    display: flex;
 }
 
 .search-bar {
@@ -92,6 +93,7 @@ body {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
+    position: absolute;
 }
 
 #search-input {
@@ -184,43 +186,282 @@ body {
 }
 
 /* 用户操作区域样式 */
+/* 用户名显示样式优化 */
+.user-name {
+    max-width: 120px; /* 增加宽度以显示更多文字 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #333; /* 使用具体的颜色值替代var() */
+    font-weight: 600;
+    font-size: 16px; /* 调整为更合适的字体大小 */
+    margin-right: 12px; /* 改用margin-right确保与头像之间有合适间距 */
+    display: inline-block; /* 改为inline-block以更好控制文本溢出 */
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+/* 用户操作按钮统一样式 */
+.btn-user {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 24px;
+    margin-left: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+/* 登录按钮样式优化 */
+.btn-user:first-of-type {
+    color: #4a4a4a;
+    background-color: transparent;
+    border: 1.5px solid #e0e0e0;
+}
+
+.btn-user:first-of-type:hover {
+    color: #2a2a2a;
+    border-color: #c0c0c0;
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* 注册按钮样式优化 */
+.btn-user:last-of-type {
+    color: #fff;
+    background-color: #1db954;
+    border: 1.5px solid #1db954;
+    margin-left: 12px;
+}
+
+.btn-user:last-of-type:hover {
+    background-color: #1ed760;
+    border-color: #1ed760;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(29, 185, 84, 0.25);
+}
+
+/* 按钮点击效果优化 */
+.btn-user:active {
+    transform: translateY(1px);
+    box-shadow: none;
+}
+
+/* 用户操作区域容器优化 */
 .user-actions {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex: 0 0 auto;
+    gap: 12px;
+    padding-right: 24px;
+    height: 100%;
 }
 
-.btn-user {
-    color: var(--nav-text-color);
-    text-decoration: none;
-    font-weight: bold;
-    margin-left: 20px;
-    padding: 8px 15px;
-    border-radius: var(--border-radius-xl);
-    transition: var(--transition-normal);
+/* 用户下拉菜单优化 */
+.user-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
-.btn-user:hover {
-    background-color: var(--light-gray);
-}
-
+/* 头像样式优化 */
 .user-avatar {
-    width: 40px;
+    width: 40px; /* 调整为更合适的尺寸 */
     height: 40px;
+    margin-left: 12px;
     border-radius: 50%;
+    cursor: pointer;
     object-fit: cover;
-    margin-right: 15px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
 }
 
+.user-avatar:hover {
+    opacity: 0.9;
+    border-color: #1db954;
+}
+
+/* 下拉菜单样式优化 */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0; /* 改为右对齐 */
+    width: 240px;
+    margin-top: 8px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+}
+
+.user-dropdown:hover .dropdown-menu {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 下拉菜单头部样式优化 */
+.dropdown-header {
+    padding: 16px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-header .username {
+    font-weight: 600;
+    color: #2a2a2a;
+    margin-bottom: 4px;
+    font-size: 15px;
+}
+
+.dropdown-header .email {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 下拉菜单项样式优化 */
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    color: #4a4a4a;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.dropdown-item:hover {
+    background-color: #f5f5f5;
+    color: #1db954;
+}
+
+.dropdown-item i {
+    margin-right: 12px;
+    width: 16px;
+    color: #666;
+    transition: color 0.2s ease;
+}
+
+.dropdown-item:hover i {
+    color: #1db954;
+}
+
+/* 危险操作按钮样式 */
+.dropdown-item.text-danger {
+    color: #dc3545;
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #fff5f5;
+    color: #dc3545;
+}
+
+.dropdown-item.text-danger:hover i {
+    color: #dc3545;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #eee;
+    margin: 8px 0;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .user-name {
+        max-width: 80px;
+        font-size: 14px;
+    }
+
+    .btn-user {
+        padding: 6px 16px;
+        font-size: 13px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .user-actions {
+        padding-right: 16px;
+    }
+
+    .dropdown-menu {
+        width: 200px;
+    }
+}
+
+/* 添加暗色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .user-name {
+        color: #e0e0e0;
+    }
+
+    .btn-user:first-of-type {
+        color: #d0d0d0;
+        border-color: #404040;
+    }
+
+    .btn-user:first-of-type:hover {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-menu {
+        background-color: #2a2a2a;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .dropdown-header {
+        background-color: #333;
+        border-bottom-color: #404040;
+    }
+
+    .dropdown-header .username {
+        color: #fff;
+    }
+
+    .dropdown-header .email {
+        color: #999;
+    }
+
+    .dropdown-item {
+        color: #e0e0e0;
+    }
+
+    .dropdown-item:hover {
+        background-color: #333;
+    }
+
+    .dropdown-divider {
+        background-color: #404040;
+    }
+}
+
+.text-danger {
+    color: #dc3545;
+}
+
+.text-danger i {
+    color: #dc3545;
+}
 /* 主要内容区域样式 */
 .main-content {
-    margin-top: 90px;
     padding: 20px;
     max-width: 1400px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 100px; /* 为播放器预留空间 */
+    /* 为播放器预留空间 */
+    margin: 90px auto 100px;
 }
 
 .content-wrapper {
@@ -283,28 +524,28 @@ body {
 }
 
 /* 歌曲列表区域 */
-.song-list {
-    flex: 1;
-    min-width: 0;
-}
+/*.song-list {*/
+/*    flex: 1;*/
+/*    min-width: 0;*/
+/*}*/
 
-.song-list-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
+/*.song-list-header {*/
+/*    display: flex;*/
+/*    justify-content: space-between;*/
+/*    align-items: center;*/
+/*    margin-bottom: 20px;*/
+/*}*/
 
-.song-list-header h3 {
-    font-size: 20px;
-    margin: 0;
-}
+/*.song-list-header h3 {*/
+/*    font-size: 20px;*/
+/*    margin: 0;*/
+/*}*/
 
-.song-list-header a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-size: 14px;
-}
+/*.song-list-header a {*/
+/*    color: var(--primary-color);*/
+/*    text-decoration: none;*/
+/*    font-size: 14px;*/
+/*}*/
 
 /* 歌曲项样式 */
 .song-item {
@@ -352,14 +593,14 @@ body {
 
 .song-duration {
     margin: 0 15px;
-    color: #666;
+    color: #2c3e50;
     font-size: 12px;
 }
 .song-albumname {
     display: flex;
     align-items: center;
     font-size: 12px;
-    color: #888;
+    color: #2c3e50;
     margin: 3px 0;
     max-width: 100%;
 }
@@ -1034,37 +1275,282 @@ body {
 }
 
 /* 在深色模式下的样式调整 */
-@media (prefers-color-scheme: dark) {
-    .playlist-container,
-    .playlist-header,
-    .playlist-item {
-        background: #1a1a1a;
-        border-color: #333;
-    }
-
-    .playlist-header h3,
-    .playlist-item-title {
-        color: #e0e0e0;
-    }
-
-    .playlist-item-artist,
-    .playlist-button,
-    .remove-from-playlist,
-    .clear-playlist {
-        color: #909399;
-    }
-
-    .playlist-item:hover {
-        background: #2c2c2c;
-    }
-
-    .playlist-item.playing {
-        background: rgba(64, 158, 255, 0.15);
-    }
-
-    .playlist-button:hover,
-    .clear-playlist:hover {
-        color: #ffffff;
-    }
+/* 歌曲加载相关样式 */
+/* 歌曲列表容器样式 */
+.song-list {
+    position: relative;
+    max-height: 800px; /* 根据你的需求调整初始显示高度 */
+    overflow: hidden;
 }
 
+/* 加载更多包装器 */
+.load-more-wrapper {
+    position: relative;
+    margin-top: -100px; /* 与渐变遮罩重叠 */
+    padding-top: 60px;
+    text-align: center;
+}
+
+/* 渐变遮罩 */
+.fade-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.8) 40%,
+        rgba(255, 255, 255, 0.9) 60%,
+        rgba(255, 255, 255, 1) 100%
+    );
+    pointer-events: none; /* 确保遮罩不会影响按钮点击 */
+}
+
+/* 加载更多按钮容器 */
+.load-more-container {
+    position: relative;
+    z-index: 2;
+    padding: 20px 0;
+    background: transparent;
+}
+
+/* 加载更多按钮样式 */
+.load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border: 2px solid #e0e0e0;
+    border-radius: 24px;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.load-more-btn:hover {
+    background-color: #f5f5f5;
+    border-color: #d0d0d0;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 加载状态样式 */
+.load-more-btn.loading {
+    background-color: #f5f5f5;
+    cursor: wait;
+}
+
+.load-more-btn.loading .fa-chevron-down {
+    display: none;
+}
+
+.load-more-btn.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ccc;
+    border-top-color: #666;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+}
+
+/* 全部加载完成状态 */
+.load-more-btn.disabled {
+    background-color: #f5f5f5;
+    cursor: default;
+    opacity: 0.7;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 歌曲状态计数器 */
+.songs-status {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #999;
+    opacity: 0.8;
+}
+
+/* 展开动画 */
+.song-list.expanded {
+    max-height: none;
+    transition: max-height 0.5s ease-out;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 错误消息样式 */
+.error-message {
+    text-align: center;
+    color: #ff4444;
+    padding: 12px;
+    margin: 10px auto;
+    max-width: 80%;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+}
+
+.song-list {
+    position: relative;
+    padding: 15px 20px;
+    background: #fff;
+}
+
+.song-list::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 98%;
+    height: 180px; /* 增加上部分边框的高度 */
+    background: linear-gradient(180deg,
+        rgba(245, 245, 245, 0.5) 0%,
+        rgba(250, 250, 250, 0.3) 60%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+}
+
+/* 左上角和右上角的装饰线 */
+.song-list::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 2%;
+    width: 35px;
+    height: 2px;
+    background: linear-gradient(90deg,
+        rgba(200, 200, 200, 0.8),
+        rgba(200, 200, 200, 0)
+    );
+}
+
+.song-list .corner-right {
+    content: '';
+    position: absolute;
+    top: 12px;
+    right: 2%;
+    width: 35px;
+    height: 2px;
+    background: linear-gradient(-90deg,
+        rgba(200, 200, 200, 0.8),
+        rgba(200, 200, 200, 0)
+    );
+}
+
+/* 顶部中间的装饰线 */
+.song-list .top-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: rgba(200, 200, 200, 0.3);
+    border-radius: 0 0 3px 3px;
+}
+
+#song-list-container {
+    position: relative;
+    z-index: 1;
+}
+/* 喜欢按钮样式 */
+.like-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #666;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index:10000;
+}
+
+.like-button:hover {
+    transform: scale(1.1);
+}
+
+.like-button.active {
+    color: #ff4757;
+}
+
+.like-button .fa-heart {
+    font-size: 1.2em;
+}
+
+.likes-count {
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* 动画效果 */
+@keyframes heart-burst {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+.like-button.active i {
+    animation: heart-burst 0.3s ease forwards;
+}
+
+/* 未登录状态提示 */
+.like-button[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.like-button[data-tooltip]:hover:before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 通知样式 */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 4px;
+    z-index: 1000;
+    animation: slide-in 0.3s ease;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
