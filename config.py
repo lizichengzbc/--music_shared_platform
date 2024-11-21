@@ -12,9 +12,9 @@ class Config:
     MAIL_PORT = 465
     MAIL_USE_SSL = True
     MAIL_USE_TLS = False
-    MAIL_USERNAME = '2471569585@qq.com'  # 替换为您的QQ邮箱
+    MAIL_USERNAME = ''  # 替换为您的QQ邮箱
     MAIL_PASSWORD = 'dplgpbucymmqdigb'  # 替换为您的QQ邮箱授权码
-    MAIL_DEFAULT_SENDER = ('JJ20音乐分享', '2471569585@qq.com')  # 替换为您的QQ邮箱
+    MAIL_DEFAULT_SENDER = ('JJ20音乐分享', '')  # 替换为您的QQ邮箱
 
     UPLOAD_FOLDER = os.path.join(basedir, 'app', 'static')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max-limit
