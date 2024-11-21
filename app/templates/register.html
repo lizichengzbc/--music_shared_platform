@@ -1,113 +1,163 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
-    <div class="register-container">
-        <div class="register-card">
-            <div class="register-header">
-                <h2 class="register-title">注册</h2>
+<main class="register" role="main">
+    <div class="register__container">
+        <form class="register__form" method="post" enctype="multipart/form-data" id="register-form"
+              action="{{ url_for('main.register') }}" data-login-url="{{ url_for('main.login') }}"
+              aria-labelledby="register-title">
+            {{ form.hidden_tag() }}
+
+            <header class="register__header">
+                <h1 id="register-title" class="register__title">注册账号</h1>
+                <p class="register__subtitle">创建您的个人账号</p>
+            </header>
+
+            <!-- 修改头像上传部分 -->
+        <section class="register__avatar-section" aria-label="头像上传">
+           <div class="avatar-upload">
+               <div class="avatar-upload__preview" id="avatar-container" role="button" tabindex="0">
+                   <img class="avatar-upload__image" id="avatar-preview"
+                        src="{{ url_for('static', filename='images/default-avatar.png') }}"
+                        alt="头像预览">
+                   <div class="avatar-upload__overlay">
+                       <div class="avatar-upload__help">
+                           <p class="avatar-upload__hint">点击或拖拽上传</p>
+                           <ul class="avatar-upload__tips">
+                               <li>支持JPG、PNG、GIF格式</li>
+                               <li>文件大小不超过5MB</li>
+                               <li>建议使用正方形图片</li>
+                           </ul>
+                       </div>
+                   </div>
+               </div>
+               <div class="avatar-upload__error" id="avatar-error" role="alert"></div>
+               <div class="avatar-upload__actions">
+                   <button type="button" class="btn btn--outlined" id="choose-avatar">选择图片</button>
+                   <button type="button" class="btn btn--outlined" id="edit-avatar" aria-controls="cropper-container">编辑图片</button>
+               </div>
+           </div>
+           {{ form.avatar(class_="avatar-upload__input visually-hidden", id="avatar-input", accept="image/*") }}
+        </section>
+
+            <section class="register__form-fields">
+                <div class="form-field">
+                    <label class="form-field__label" for="username">{{ form.username.label }}</label>
+                    {{ form.username(class_="form-field__input", id="username", placeholder="设置用户名") }}
+                    <span class="form-field__error" id="username-error" role="alert"></span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-field__label" for="email">{{ form.email.label }}</label>
+                    <div class="form-field__group">
+                        {{ form.email(class_="form-field__input", id="email", placeholder="您的邮箱地址") }}
+                        <button type="button" class="btn btn--primary" id="send-code">获取验证码</button>
+                    </div>
+                    <span class="form-field__error" id="email-error" role="alert"></span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-field__label" for="verification_code">{{ form.verification_code.label }}</label>
+                    {{ form.verification_code(class_="form-field__input", id="verification_code", placeholder="输入验证码") }}
+                    <span class="form-field__error" id="code-error" role="alert"></span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-field__label" for="password">{{ form.password.label }}</label>
+                    {{ form.password(class_="form-field__input", id="password", placeholder="设置密码") }}
+                    <span class="form-field__hint">密码至少8位，包含字母和数字</span>
+                    <span class="form-field__error" id="password-error" role="alert"></span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-field__label" for="password2">{{ form.password2.label }}</label>
+                    {{ form.password2(class_="form-field__input", id="password2", placeholder="确认密码") }}
+                    <span class="form-field__error" id="password2-error" role="alert"></span>
+                </div>
+
+                <fieldset class="form-field">
+                    <legend class="form-field__label">性别</legend>
+                    <div class="gender-select" role="radiogroup">
+                        <label class="gender-select__option">
+                            <input type="radio" name="gender" value="male" class="gender-select__input">
+                            <span class="gender-select__content">
+                                <span class="gender-select__icon" aria-hidden="true">♂</span>
+                                <span class="gender-select__text">男</span>
+                            </span>
+                        </label>
+
+                        <label class="gender-select__option">
+                            <input type="radio" name="gender" value="female" class="gender-select__input">
+                            <span class="gender-select__content">
+                                <span class="gender-select__icon" aria-hidden="true">♀</span>
+                                <span class="gender-select__text">女</span>
+                            </span>
+                        </label>
+
+                        <label class="gender-select__option">
+                            <input type="radio" name="gender" value="other" class="gender-select__input">
+                            <span class="gender-select__content">
+                                <span class="gender-select__icon" aria-hidden="true">⚧</span>
+                                <span class="gender-select__text">其他</span>
+                            </span>
+                        </label>
+                    </div>
+                    <span class="form-field__error" id="gender-error" role="alert"></span>
+                </fieldset>
+            </section>
+
+            <footer class="register__footer">
+                <button type="submit" class="btn btn--lg btn--primary btn--full">完成注册</button>
+                <p class="register__login-hint">
+                    已有账号？<a href="{{ url_for('main.login') }}" class="register__login-link">立即登录</a>
+                </p>
+            </footer>
+        </form>
+    </div>
+</main>
+
+<div class="image-cropper" id="cropper-container" role="dialog" aria-label="头像裁剪" hidden>
+    <div class="image-cropper__content">
+        <div class="image-cropper__preview">
+            <img id="cropper-image" src="" alt="图片裁剪预览">
+        </div>
+
+        <div class="image-cropper__toolbar">
+            <div class="image-cropper__controls" role="toolbar">
+                <button type="button" class="btn btn--icon" id="rotate-left">
+                    <i class="icon" aria-hidden="true">↺</i>
+                    <span class="visually-hidden">向左旋转</span>
+                </button>
+                <button type="button" class="btn btn--icon" id="rotate-right">
+                    <i class="icon" aria-hidden="true">↻</i>
+                    <span class="visually-hidden">向右旋转</span>
+                </button>
+                <button type="button" class="btn btn--icon" id="zoom-in">
+                    <i class="icon" aria-hidden="true">+</i>
+                    <span class="visually-hidden">放大</span>
+                </button>
+                <button type="button" class="btn btn--icon" id="zoom-out">
+                    <i class="icon" aria-hidden="true">-</i>
+                    <span class="visually-hidden">缩小</span>
+                </button>
             </div>
-            <div class="register-content">
-                <form action="{{ url_for('main.register') }}" method="post" enctype="multipart/form-data" id="register-form"action="{{ url_for('main.register') }}" data-login-url="{{ url_for('main.login') }}">
-                    {{ form.hidden_tag() }}
 
-                    <div class="avatar-section">
-                        <div class="avatar-container" id="avatar-container">
-                            <img id="avatar-preview" src="{{ url_for('static', filename='images/default-avatar.png') }}" alt="头像预览">
-                            <div class="avatar-overlay">
-                                <span>选择头像</span>
-                            </div>
-                        </div>
-                        <div class="avatar-actions">
-                            <button type="button" class="avatar-button" id="choose-avatar">选择头像</button>
-                            <button type="button" class="avatar-button" id="edit-avatar">编辑头像</button>
-                        </div>
-                    </div>
-                    {{ form.avatar(style="display: none;", id="avatar-input", accept="image/*") }}
-
-                    <div class="form-group">
-                        {{ form.username.label }}
-                        {{ form.username(class="form-input", placeholder="请输入用户名") }}
-                        <div id="username-error" class="error-message"></div>
-                    </div>
-
-                    <div class="form-group">
-                        {{ form.email.label }}
-                        <div class="email-group">
-                            {{ form.email(class="form-input", placeholder="请输入邮箱地址") }}
-                            <button type="button" id="send-code">发送验证码</button>
-                        </div>
-                        <div id="email-error" class="error-message"></div>
-                    </div>
-
-                    <div class="form-group">
-                        {{ form.verification_code.label }}
-                        {{ form.verification_code(class="form-input", placeholder="请输入验证码") }}
-                        <div id="code-error" class="error-message"></div>
-                    </div>
-
-                    <div class="form-group">
-                        {{ form.password.label }}
-                        {{ form.password(class="form-input", placeholder="请输入密码") }}
-                        <div id="password-error" class="error-message"></div>
-                    </div>
-
-                    <div class="form-group">
-                        {{ form.password2.label }}
-                        {{ form.password2(class="form-input", placeholder="请再次输入密码") }}
-                        <div id="password2-error" class="error-message"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>性别</label>
-                        <div class="gender-selection">
-                            <input type="radio" id="male" name="gender" value="male" required>
-                            <label for="male" class="gender-option">
-                                <span class="gender-icon">♂</span>
-                                <span class="gender-text">男</span>
-                            </label>
-
-                            <input type="radio" id="female" name="gender" value="female" required>
-                            <label for="female" class="gender-option">
-                                <span class="gender-icon">♀</span>
-                                <span class="gender-text">女</span>
-                            </label>
-
-                            <input type="radio" id="other" name="gender" value="other" required>
-                            <label for="other" class="gender-option">
-                                <span class="gender-icon">⚧</span>
-                                <span class="gender-text">其他</span>
-                            </label>
-                        </div>
-                        <div id="gender-error" class="error-message"></div>
-                    </div>
-
-                    <button type="submit" class="submit-button">注册</button>
-                </form>
+            <div class="image-cropper__actions">
+                <button type="button" class="btn btn--text" id="cancel-crop">取消</button>
+                <button type="button" class="btn btn--primary" id="confirm-crop">确认</button>
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-    <div class="cropper-container" id="cropper-container">
-        <div class="cropper-content">
-            <img id="cropper-image" src="" alt="裁剪图片">
-            <div class="cropper-controls">
-                <button type="button" id="rotate-left">↺ 旋转</button>
-                <button type="button" id="rotate-right">↻ 旋转</button>
-                <button type="button" id="zoom-in">放大</button>
-                <button type="button" id="zoom-out">缩小</button>
-            </div>
-            <div class="cropper-actions">
-                <button type="button" id="cancel-crop">取消</button>
-                <button type="button" id="confirm-crop">确认</button>
-            </div>
-        </div>
-    </div>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
-<script src="{{ url_for('static', filename='js/register.js') }}"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/register/main.js') }}"></script>
 {% endblock %}
