@@ -1,1 +1,3 @@
-# --music_shared_platform
+# 音乐分享平台-jj20 music share platform
+哈哈哈哈哈 这个项目主要是作者用来学习web开发经验用的，第一次做这种项目......
+可能做的不是很好，有什么意见的可以在issue跟我讲一下~（看见了都会回复的）
