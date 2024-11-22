@@ -6,8 +6,7 @@
         <form class="register__form" method="post" enctype="multipart/form-data" id="register-form"
               action="{{ url_for('main.register') }}" data-login-url="{{ url_for('main.login') }}"
               aria-labelledby="register-title">
-            {{ form.hidden_tag() }}
-
+            {{ form.csrf_token }}
             <header class="register__header">
                 <h1 id="register-title" class="register__title">注册账号</h1>
                 <p class="register__subtitle">创建您的个人账号</p>

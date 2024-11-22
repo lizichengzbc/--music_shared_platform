@@ -66,7 +66,6 @@ export class AvatarCropper {
         };
 
         this.init();
-        // 显示初始帮助信息
         this.showHelpText();
     }
 
@@ -77,9 +76,9 @@ export class AvatarCropper {
     }
 
     showHelpText() {
-        if (this.elements.helpText) {
-            this.elements.helpText.textContent = '点击或拖拽图片到此处，支持JPG、PNG、GIF格式，文件大小不超过5MB';
-            this.elements.formatText.innerHTML = `
+        if (this.elements.controls.helpText) {
+            this.elements.controls.helpText.textContent = '点击或拖拽图片到此处，支持JPG、PNG、GIF格式，文件大小不超过5MB';
+            this.elements.controls.formatText.innerHTML = `
                 <ul>
                     <li>推荐使用正方形图片</li>
                     <li>支持旋转和缩放调整</li>
@@ -88,13 +87,12 @@ export class AvatarCropper {
             `;
         }
     }
+
     bindEvents() {
-        // 选择图片
         this.elements.chooseBtn?.addEventListener('click', () => {
             this.elements.input?.click();
         });
 
-        // 编辑当前图片
         this.elements.editBtn?.addEventListener('click', () => {
             if (this.croppedBlob) {
                 const url = URL.createObjectURL(this.croppedBlob);
@@ -102,7 +100,6 @@ export class AvatarCropper {
             }
         });
 
-        // 文件选择处理
         this.elements.input?.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -111,7 +108,6 @@ export class AvatarCropper {
             e.target.value = '';
         });
 
-        // 裁剪控制
         Object.entries(this.elements.controls).forEach(([action, element]) => {
             element?.addEventListener('click', () => {
                 switch(action) {
@@ -217,29 +213,29 @@ export class AvatarCropper {
         }
     }
 
-validateFile(file) {
-    if (!file) return {
-        valid: false,
-        error: '请选择文件'
-    };
-
-    if (!CONSTANTS.FILE.ALLOWED_TYPES.includes(file.type)) {
-        return {
+    validateFile(file) {
+        if (!file) return {
             valid: false,
-            error: '不支持该图片格式。请上传JPG、PNG或GIF格式的图片文件，建议使用JPG格式以获得最佳效果。'
+            error: '请选择文件'
         };
-    }
 
-    if (file.size > CONSTANTS.FILE.MAX_SIZE) {
-        const maxSizeMB = CONSTANTS.FILE.MAX_SIZE / (1024 * 1024);
-        return {
-            valid: false,
-            error: `文件过大。请上传小于${maxSizeMB}MB的图片，您可以压缩图片后重试。当前文件大小: ${(file.size / (1024 * 1024)).toFixed(1)}MB`
-        };
-    }
+        if (!CONSTANTS.FILE.ALLOWED_TYPES.includes(file.type)) {
+            return {
+                valid: false,
+                error: '不支持该图片格式。请上传JPG、PNG或GIF格式的图片文件，建议使用JPG格式以获得最佳效果。'
+            };
+        }
 
-    return { valid: true };
-}
+        if (file.size > CONSTANTS.FILE.MAX_SIZE) {
+            const maxSizeMB = CONSTANTS.FILE.MAX_SIZE / (1024 * 1024);
+            return {
+                valid: false,
+                error: `文件过大。请上传小于${maxSizeMB}MB的图片，您可以压缩图片后重试。当前文件大小: ${(file.size / (1024 * 1024)).toFixed(1)}MB`
+            };
+        }
+
+        return { valid: true };
+    }
 
     async compressImage(file) {
         return new Promise((resolve, reject) => {
@@ -301,25 +297,44 @@ validateFile(file) {
     updatePreview() {
         if (!this.cropper || !this.elements.preview) return;
 
-        requestAnimationFrame(() => {
-            this.cropper.getCroppedCanvas({
+        try {
+            const canvas = this.cropper.getCroppedCanvas({
                 width: CONSTANTS.FILE.OUTPUT_SIZE.width,
                 height: CONSTANTS.FILE.OUTPUT_SIZE.height,
                 fillColor: '#fff',
                 imageSmoothingEnabled: true,
                 imageSmoothingQuality: 'high',
-            }).toBlob(
-                (blob) => {
-                    if (this.croppedBlob) {
-                        URL.revokeObjectURL(this.elements.preview.src);
-                    }
-                    this.croppedBlob = blob;
-                    this.elements.preview.src = URL.createObjectURL(blob);
-                },
-                'image/png',
-                CONSTANTS.FILE.IMAGE_QUALITY
-            );
-        });
+            });
+
+            if (!canvas) {
+                throw new Error('Failed to get cropped canvas');
+            }
+
+            if (this.croppedBlob) {
+                URL.revokeObjectURL(URL.createObjectURL(this.croppedBlob));
+            }
+
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    (blob) => {
+                        if (!blob) {
+                            reject(new Error('Failed to create blob'));
+                            return;
+                        }
+                        this.croppedBlob = blob;
+                        const blobUrl = URL.createObjectURL(blob);
+                        this.elements.preview.src = blobUrl;
+                        resolve(blob);
+                    },
+                    'image/png',
+                    CONSTANTS.FILE.IMAGE_QUALITY
+                );
+            });
+        } catch (error) {
+            console.error('Update preview error:', error);
+            this.showError('更新预览图失败');
+            return Promise.reject(error);
+        }
     }
 
     closeCropper() {
@@ -334,9 +349,20 @@ validateFile(file) {
         }
     }
 
-
     showError(message) {
         utils.showError('avatar-error', message);
+    }
+
+    async confirmCrop() {
+        try {
+            await this.updatePreview();
+            this.closeCropper();
+            return this.croppedBlob;
+        } catch (error) {
+            console.error('Confirm crop error:', error);
+            this.showError('确认裁剪失败');
+            return null;
+        }
     }
 
     getCroppedBlob() {
@@ -351,36 +377,8 @@ validateFile(file) {
         if (this.croppedBlob) {
             URL.revokeObjectURL(URL.createObjectURL(this.croppedBlob));
         }
+
+        this.cropper = null;
+        this.croppedBlob = null;
     }
-    async confirmCrop() {
-  this.updatePreview();
-
-  if (this.croppedBlob) {
-      try {
-          const formData = new FormData();
-          formData.append('avatar', this.croppedBlob);
-      }
-      catch(error) {
-          this.showError(error);
-      }
-
-    // try {
-    //   const response = await fetch('/register', {
-    //     method: 'POST',
-    //     body: formData
-    //   });
-    //
-    //   const data = await response.json();
-    //   if (data.success) {
-    //     this.elements.preview.src = data.avatar_url;
-    //   } else {
-    //     this.showError(data.message);
-    //   }
-    // } catch (error) {
-    //   this.showError('头像上传失败');
-    // }
-  }
-
-  this.closeCropper();
-}
 }

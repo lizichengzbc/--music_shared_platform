@@ -5,7 +5,7 @@ from flask_mail import Mail
 from config import Config
 import os
 from flask_login import LoginManager
-
+from flask_wtf.csrf import CSRFProtect
 db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
@@ -15,6 +15,7 @@ login_manager = LoginManager()
 def create_app(config_class=Config, debug=False):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    csrf = CSRFProtect(app)
 
     # 设置debug模式
     app.debug = debug

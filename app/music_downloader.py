@@ -439,7 +439,7 @@ def download_song(music_name: str, user_id: Optional[int] = None) -> Tuple[bool,
         # 获取下载链接
         time.sleep(2)  # 避免频繁请求
         url_mp3 = fetch_url(emixsong_id)
-        if url_mp3 is '':
+        if url_mp3 == '':
             return False, "获取下载链接失败"
 
         # 下载文件

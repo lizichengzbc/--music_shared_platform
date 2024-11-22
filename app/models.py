@@ -75,16 +75,21 @@ class User(UserMixin, db.Model):
             .paginate(page=page, per_page=per_page)
 
 class VerificationCode(db.Model):
-    __tablename__ = 'verification_codes'
+    """验证码模型"""
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), nullable=False)
-    code = db.Column(db.String(10), nullable=False)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    code = db.Column(db.String(6), nullable=False)
+    purpose = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
-    purpose = db.Column(db.String(20), nullable=False)
+    attempts = db.Column(db.Integer, default=0)
 
-    def is_expired(self):
+    def is_expired(self) -> bool:
+        """检查是否过期"""
         return datetime.utcnow() > self.expires_at
+
+    def __repr__(self):
+        return f'<VerificationCode {self.email}>'
 
 
 class Artist(db.Model):
