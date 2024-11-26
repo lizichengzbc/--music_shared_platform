@@ -59,7 +59,6 @@ class PlayerController {
         this.allSongs = [];        // 数据库中的所有歌曲
         this.currentSongIndex = -1;
         this.playMode = PlayMode.SEQUENCE;
-
         // 播放列表相关属性
         this.playlist = [];
         this.isPlayingFromPlaylist = false;
@@ -317,7 +316,7 @@ class PlayerController {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
-    // 存储播放列表到本地存储
+    // 保存播放列表到本地存储
     savePlaylistToStorage() {
         const playlistData = {
             songs: this.playlist,
@@ -394,32 +393,153 @@ class PlayerController {
     this.lyricsManager.updateTime(localStorage.getItem('currentTime'));
     await this.loadLikeStatus(song.id);
     }
-    // 播放列表管理方法
-    addToPlaylist(song) {
-        if (!this.playlist.some(item => item.id === song.id)) {
-            this.playlist.push(song);
-            this.updatePlaylistView();
-            this.savePlaylistToStorage();
-        } else {
+        // 新增方法 - 检查歌曲是否在播放列表中
+    isInPlaylist(songId) {
+        return Boolean(this.playlist && this.playlist.some(item => item.id === songId));
+    }
+    // 在 PlayerController 类中添加或修改以下方法
+     // 修改添加到播放列表方法中的通知
+    addToPlaylist(song, button) {
+        try {
+            if (button && button.classList.contains('loading')) {
+                return;
+            }
+
+            if (button) {
+                button.classList.add('loading');
+                button.disabled = true;
+            }
+
+            if (!this.isInPlaylist(song.id)) {
+                setTimeout(() => {
+                    this.playlist.push(song);
+                    this.updatePlaylistView();
+                    this.savePlaylistToStorage();
+
+                    if (button) {
+                        button.classList.remove('loading');
+                        button.classList.add('success', 'added');
+                        const icon = button.querySelector('i');
+                        if (icon) {
+                            icon.className = 'fas fa-check';
+                        }
+
+                        setTimeout(() => {
+                            button.classList.remove('success');
+                            if (icon) {
+                                icon.className = 'fas fa-plus';
+                            }
+                        }, 2000);
+
+                        button.disabled = false;
+                    }
+
+                    this.showNotification(
+                        `已将 "${song.name}" 添加到播放列表`,
+                        'success'
+                    );
+                }, 300);
+            } else {
+                if (button) {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                    button.style.animation = 'shake 0.5s ease';
+                    setTimeout(() => {
+                        button.style.animation = '';
+                    }, 500);
+                }
+
+                this.showNotification(
+                    `"${song.name}" 已在播放列表中`,
+                    'warning'
+                );
+            }
+        } catch (error) {
+            console.error('添加到播放列表时出错:', error);
+            if (button) {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+            this.showNotification(
+                '添加失败，请稍后重试',
+                'error'
+            );
         }
     }
 
+ // 移除播放列表项时的通知
     removeFromPlaylist(index) {
         if (index >= 0 && index < this.playlist.length) {
-            // 如果移除的是当前播放的歌曲，且不是最后一首
+            const removedSong = this.playlist[index];
+
             if (index === this.currentPlaylistIndex && index < this.playlist.length - 1) {
                 this.playNextInPlaylist();
             }
+
             this.playlist.splice(index, 1);
             this.updatePlaylistView();
             this.savePlaylistToStorage();
 
-            // 更新当前播放索引
             if (this.currentPlaylistIndex >= index) {
                 this.currentPlaylistIndex--;
             }
+
+            // 显示移除成功通知
+            this.showNotification(
+                `已将 "${removedSong.name}" 从播放列表移除`,
+                'success'
+            );
         }
     }
+    // 新增方法 - 显示通知
+   /**
+     * 显示通知
+     * @param {string} message - 通知消息
+     * @param {string} type - 通知类型 ('success' | 'warning' | 'error')
+     * @param {number} duration - 显示时长（毫秒）
+     */
+    showNotification(message, type = 'success', duration = 3000) {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+
+        // 创建通知内容
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        content.textContent = message;
+        notification.appendChild(content);
+
+        // 创建关闭按钮
+        const closeButton = document.createElement('span');
+        closeButton.className = 'notification-close';
+        notification.appendChild(closeButton);
+
+        // 创建进度条
+        const progress = document.createElement('div');
+        progress.className = 'progress';
+        notification.appendChild(progress);
+
+        // 添加到容器
+        container.appendChild(notification);
+
+        // 关闭按钮事件
+        closeButton.addEventListener('click', () => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        });
+
+        // 自动移除
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.classList.add('fade-out');
+                setTimeout(() => notification.remove(), 300);
+            }
+        }, duration);
+    }
+
     updatePlayModeButton() {
 
     switch (this.playMode) {
@@ -466,8 +586,11 @@ class PlayerController {
         this.savePlaylistToStorage();
     }
 
+    // 更新播放列表视图
     updatePlaylistView() {
         const playlistItems = this.playlistContainer.querySelector('.playlist-items');
+        if (!playlistItems) return;
+
         playlistItems.innerHTML = '';
 
         this.playlist.forEach((song, index) => {
@@ -487,11 +610,11 @@ class PlayerController {
                 </button>
             `;
 
-            // 添加点击播放事件
+            // 添加播放和删除事件监听器
             itemElement.addEventListener('click', () => this.playFromPlaylist(index));
 
-            // 添加移除按钮事件
-            itemElement.querySelector('.remove-from-playlist').addEventListener('click', (e) => {
+            const removeButton = itemElement.querySelector('.remove-from-playlist');
+            removeButton.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.removeFromPlaylist(index);
             });

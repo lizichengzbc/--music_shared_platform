@@ -80,38 +80,74 @@ class SongLoader {
     }
 
     // 创建单个歌曲元素
-    createSongElement(song) {
-        const songElement = document.createElement('div');
-        songElement.className = 'song-item';
-        songElement.setAttribute('data-song-id', song.id);
+ createSongElement(song) {
+    const songElement = document.createElement('div');
+    songElement.className = 'song-item';
+    songElement.setAttribute('data-song-id', song.id);
 
-        // 转义处理歌曲信息，防止 XSS 攻击
-        const escapedSong = {
-            ...song,
-            name: this.escapeHtml(song.name),
-            artist: this.escapeHtml(song.artist),
-            album: this.escapeHtml(song.album || 'Unknown Album')
-        };
+    // 转义处理歌曲信息
+    const escapedSong = {
+        ...song,
+        name: this.escapeHtml(song.name),
+        artist: this.escapeHtml(song.artist),
+        album: this.escapeHtml(song.album || 'Unknown Album')
+    };
 
-        songElement.innerHTML = `
-            <img src="${escapedSong.image_url}" alt="${escapedSong.name} album art" 
-                onerror="this.src='/static/images/default-album.png'">
-            <div class="song-info">
-                <h4>${escapedSong.name}</h4>
-                <p>${escapedSong.artist}</p>
-            </div>
-            <div class="song-albumname">${escapedSong.album}</div>
-            <div class="song-duration">${this.formatDuration(escapedSong.duration)}</div>
-            <button class="add-to-playlist" onclick="window.player.addToPlaylist(${this.safeStringify(song)})">
-                <i class="fas fa-plus"></i>
-            </button>
-            <button class="play-button" onclick="window.player.playSong(${window.player.displayedSongs.findIndex(s => s.id === song.id)}, true)">
+    songElement.innerHTML = `
+        <img src="${escapedSong.image_url}" alt="${escapedSong.name}" 
+            onerror="this.src='/static/images/default-album.png'">
+        <div class="song-info">
+            <h4>${escapedSong.name}</h4>
+            <p>${escapedSong.artist}</p>
+        </div>
+        <div class="song-duration">
+            ${this.formatDuration(escapedSong.duration)}
+        </div>
+        <div class="song-controls">
+            <button class="play-button" title="播放">
                 <i class="fas fa-play"></i>
             </button>
-        `;
+            <button class="add-to-playlist" title="添加到播放列表">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    `;
 
-        return songElement;
+    // 获取按钮元素
+    const playButton = songElement.querySelector('.play-button');
+    const addToPlaylistBtn = songElement.querySelector('.add-to-playlist');
+
+    // 播放按钮事件
+    playButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.player) {
+            const songIndex = window.player.displayedSongs.findIndex(s => s.id === song.id);
+            window.player.playSong(songIndex, true);
+
+            // 更新按钮图标
+            const icons = songElement.querySelectorAll('.play-button i');
+            icons.forEach(icon => {
+                icon.className = audioPlayer.paused ? 'fas fa-play' : 'fas fa-pause';
+            });
+        }
+    });
+
+    // 添加到播放列表按钮事件
+    addToPlaylistBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.player && !addToPlaylistBtn.disabled) {
+            window.player.addToPlaylist(song, addToPlaylistBtn);
+        }
+    });
+
+    // 如果是当前播放的歌曲，添加playing类
+    if (window.player && window.player.currentSongIndex === song.id) {
+        songElement.classList.add('playing');
+        playButton.querySelector('i').className = 'fas fa-pause';
     }
+
+    return songElement;
+}
 
     // HTML 转义
     escapeHtml(unsafe) {
