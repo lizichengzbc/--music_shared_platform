@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
 class PlayerController {
     constructor() {
         // 基础属性
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        this.csrfToken = tokenMeta ? tokenMeta.content : null;
         this.displayedSongs = [];  // 显示在界面上的歌曲
         this.allSongs = [];        // 数据库中的所有歌曲
         this.currentSongIndex = -1;
@@ -71,12 +73,16 @@ class PlayerController {
         this.restorePlayerState();
         this.initializeLikeButton();
         this.initializeEventListeners();
+
         // 添加点击事件监听
         if (likeButton) {
             likeButton.addEventListener('click', () => {
                 console.log("Like button clicked!");
                 this.toggleLike();
             });
+        }
+        if(!this.csrfToken){
+            console.error('CSRF token not found');
         }
     }
 
@@ -505,7 +511,9 @@ class PlayerController {
             const response = await fetch(`/api/songs/${song.id}/like`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.csrfToken
                 },
                 credentials: 'same-origin'
             });

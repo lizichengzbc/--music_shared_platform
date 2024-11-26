@@ -1,4 +1,7 @@
 from functools import wraps
+from urllib.parse import urlparse, urljoin
+from flask_admin.helpers import is_safe_url
+from flask_wtf.csrf import generate_csrf
 from .email_service import EmailService
 from alembic.util import status
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash, \
@@ -22,9 +25,41 @@ import time
 from pytz import timezone
 from app.music_downloader import download_song, audio_id_list, images_download
 from typing import Optional, Tuple
+from .utils.redis_client import RedisHelper, RateLimit
+import redis
+from flask_wtf.csrf import CSRFProtect
 
+csrf = CSRFProtect()
 main = Blueprint('main', __name__)
 china_tz = timezone('Asia/Shanghai')
+redis_helper = RedisHelper()
+auth = Blueprint('auth', __name__)
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+def login_rate_limit(f):
+    """登录请求速率限制装饰器"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        key = f'login_attempts:{request.remote_addr}'
+        attempts = redis_client.get(key)
+
+        # 检查是否超过限制(5分钟内最多5次)
+        if attempts and int(attempts) >= 5:
+            return jsonify({
+                'success': False,
+                'message': '登录尝试次数过多，请5分钟后再试'
+            }), 429
+
+        # 更新尝试次数
+        pipe = redis_client.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, 300)  # 5分钟过期
+        pipe.execute()
+
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 @main.route('/')
 def welcome():
@@ -34,6 +69,151 @@ def welcome():
 def index():
     return render_template('main.html')
 
+
+
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    """登录页面和登录处理"""
+    # 如果用户已登录，重定向到首页
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    # GET请求返回登录页面
+    if request.method == 'GET':
+        return render_template('login.html', title='登录')
+
+    # POST请求处理登录逻辑
+    if not request.is_json:
+        return jsonify({
+            'success': False,
+            'message': '无效的请求格式'
+        }), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            'success': False,
+            'message': '无效的请求数据'
+        }), 400
+    """密码登录处理"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '无效的请求数据'
+            }), 400
+
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({
+                'success': False,
+                'message': '请提供邮箱和密码'
+            }), 400
+
+        user = User.query.filter_by(email=email).first()
+
+        if user is None or not user.check_password(password):
+            return jsonify({
+                'success': False,
+                'message': '邮箱或密码错误'
+            }), 401
+
+        if not user.is_active:
+            return jsonify({
+                'success': False,
+                'message': '账号已被禁用，请联系管理员'
+            }), 403
+
+        # 更新最后登录时间
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+
+        # 执行登录
+        login_user(user)
+
+        return jsonify({
+            'success': True,
+            'message': '登录成功',
+            'redirect_url': url_for('main.index')
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"登录失败: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': '登录失败，请稍后重试'
+        }), 500
+
+
+@main.route('/verification_login', methods=['POST'])
+@login_rate_limit
+def verification_login():
+    """验证码登录处理"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '无效的请求数据'
+            }), 400
+
+        email = data.get('email')
+        code = data.get('code')
+
+        if not email or not code:
+            return jsonify({
+                'success': False,
+                'message': '请提供邮箱和验证码'
+            }), 400
+
+        # 验证验证码
+        verification_service = VerificationService(db)
+        success, message, _ = verification_service.verify_code(
+            email, code, 'login'
+        )
+
+        if not success:
+            return jsonify({
+                'success': False,
+                'message': message
+            }), 400
+
+        # 查找用户
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': '用户不存在'
+            }), 404
+
+        if not user.is_active:
+            return jsonify({
+                'success': False,
+                'message': '账号已被禁用，请联系管理员'
+            }), 403
+
+        # 更新最后登录时间
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+
+        # 执行登录
+        login_user(user)
+
+        return jsonify({
+            'success': True,
+            'message': '登录成功',
+            'redirect_url': url_for('main.index')
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"验证码登录失败: {str(e)}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': '登录失败，请稍后重试'
+        }), 500
 
 @main.route('/api/songs', methods=['GET'])
 def get_songs():
@@ -255,39 +435,8 @@ def get_song_lyrics(song_id):
         return jsonify({'lyrics': []})
     return jsonify({'lyrics': song.lyrics['lyrics']})
 
-@main.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
 
-    if request.method == 'GET':
-        return render_template('login.html')
 
-    if request.method == 'POST':
-        if request.is_json:
-            # 处理 AJAX 请求
-            data = request.get_json()
-            user = User.query.filter_by(email=data.get('email')).first()
-            if user and user.check_password(data.get('password')):
-                login_user(user)
-                user.last_login = datetime.now(china_tz)  # 更新最后登录时间
-                db.session.commit()
-                return jsonify({'message': '登录成功', 'redirect': url_for('main.index')}), 200
-            else:
-                return jsonify({'error': '邮箱或密码错误'}), 401
-        else:
-            # 处理传统表单提交
-            form = LoginForm()
-            if form.validate_on_submit():
-                user = User.query.filter_by(email=form.email.data).first()
-                if user and user.check_password(form.password.data):
-                    login_user(user, remember=form.remember_me.data)
-                    user.last_login = datetime.utcnow()  # 更新最后登录时间
-                    db.session.commit()
-                    next_page = request.args.get('next')
-                    return redirect(next_page or url_for('main.index'))
-                flash('邮箱或密码错误')
-            return render_template('login.html', form=form)
 
 @main.route('/logout')
 @login_required
@@ -973,3 +1122,61 @@ def simple_rate_limit(limit=10, period=60):
         return wrapped
 
     return decorator
+
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+
+def ratelimit(limit=5, window=60):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            # 获取客户端IP
+            ip = request.remote_addr
+            key = f'login_attempts:{ip}'
+
+            # 检查是否超过限制
+            attempts = redis_client.get(key)
+            if attempts and int(attempts) >= limit:
+                return jsonify({'error': '尝试次数过多，请稍后再试'}), 429
+
+            # 更新尝试次数
+            pipe = redis_client.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, window)
+            pipe.execute()
+
+            return f(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+def login_rate_limit(f):
+    """登录请求速率限制装饰器"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        key = f'login_attempts:{request.remote_addr}'
+        attempts = redis_client.get(key)
+
+        # 检查是否超过限制(5分钟内最多5次)
+        if attempts and int(attempts) >= 5:
+            return jsonify({
+                'success': False,
+                'message': '登录尝试次数过多，请5分钟后再试'
+            }), 429
+
+        # 更新尝试次数
+        pipe = redis_client.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, 300)  # 5分钟过期
+        pipe.execute()
+
+        return f(*args, **kwargs)
+
+    return decorated_function
