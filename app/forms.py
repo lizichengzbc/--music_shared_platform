@@ -5,7 +5,6 @@ from wtforms.fields.simple import EmailField, HiddenField
 from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Length, Optional, Regexp
 from flask_wtf.file import FileAllowed
 from wtforms.widgets.core import PasswordInput
-
 from app.models import User
 
 

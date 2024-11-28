@@ -1,119 +1,309 @@
 {% extends 'admin/master.html' %}
 
 {% block head_css %}
-    {{ super() }}
-    <style>
-        .dashboard-stats {
-            padding: 20px;
-        }
-        .stat-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .stat-title {
-            color: #666;
-            font-size: 1rem;
-            margin-bottom: 10px;
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-        }
-        .recent-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-        .recent-title {
-            color: #495057;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            padding: 20px 0;
-        }
-        .total-stats {
-            margin-bottom: 30px;
-        }
-        .recent-stats {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .stat-icon {
-            float: right;
-            font-size: 2.5rem;
-            opacity: 0.1;
-            margin-top: -40px;
-        }
-    </style>
+  {{ super() }}
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --secondary-color: #3b82f6;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --bg-light: #f3f4f6;
+    }
+
+    .dashboard {
+      padding: 1.5rem;
+      background-color: var(--bg-light);
+      min-height: calc(100vh - 3.5rem);
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .dashboard-title {
+      font-size: 1.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .stat-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.75rem;
+      color: white;
+    }
+
+    .stat-icon.primary { background-color: var(--primary-color); }
+    .stat-icon.secondary { background-color: var(--secondary-color); }
+    .stat-icon.success { background-color: var(--success-color); }
+    .stat-icon.warning { background-color: var(--warning-color); }
+
+    .stat-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .dashboard-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .section-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--bg-light);
+    }
+
+    .top-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .top-list-item {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--bg-light);
+    }
+
+    .top-list-item:last-child {
+      border-bottom: none;
+    }
+
+    .item-rank {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 0.375rem;
+      background-color: var(--bg-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      margin-right: 1rem;
+    }
+
+    .item-details {
+      flex-grow: 1;
+    }
+
+    .item-title {
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .item-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .item-value {
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+
+    .recent-activity {
+      display: flex;
+      align-items: flex-start;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--bg-light);
+    }
+
+    .activity-icon {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background-color: var(--bg-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+    }
+
+    .activity-content {
+      flex-grow: 1;
+    }
+
+    .activity-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+  </style>
 {% endblock %}
 
 {% block body %}
-<div class="dashboard-stats">
-    <h2 class="h3 mb-4">Music Platform Overview</h2>
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1 class="dashboard-title">Music Admin Dashboard</h1>
+    <div class="dashboard-actions">
+      <span class="text-secondary">最后更新时间: {{ stats.current_time.strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+  </div>
 
-    <!-- 总计统计 -->
-    <div class="total-stats">
-        <h3 class="h5 mb-3">Overall Statistics</h3>
-        <div class="grid-container">
-            <div class="stat-card">
-                <div class="stat-title">Total Users</div>
-                <div class="stat-value">{{ stats.total_users }}</div>
-                <i class="fas fa-users stat-icon"></i>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Total Artists</div>
-                <div class="stat-value">{{ stats.total_artists }}</div>
-                <i class="fas fa-microphone stat-icon"></i>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Total Albums</div>
-                <div class="stat-value">{{ stats.total_albums }}</div>
-                <i class="fas fa-compact-disc stat-icon"></i>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Total Songs</div>
-                <div class="stat-value">{{ stats.total_songs }}</div>
-                <i class="fas fa-music stat-icon"></i>
-            </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div>
+          <div class="stat-title">Total Users</div>
+          <div class="stat-value">{{ stats.total_users }}</div>
         </div>
+        <div class="stat-icon primary">
+          <i class="fas fa-users"></i>
+        </div>
+      </div>
+      <div class="stat-footer">
+        <span class="text-success">
+          <i class="fas fa-arrow-up"></i>
+          {{ stats.recent_users }} new today
+        </span>
+      </div>
     </div>
 
-    <!-- 最近活动 -->
-    <div class="recent-section">
-        <h3 class="h5 mb-3">Recent Activity (Last 24 Hours)</h3>
-        <div class="grid-container">
-            <div class="recent-stats">
-                <div class="stat-title">New Users</div>
-                <div class="stat-value">{{ stats.recent_users }}</div>
-                <i class="fas fa-user-plus stat-icon"></i>
-            </div>
-            <div class="recent-stats">
-                <div class="stat-title">Downloads</div>
-                <div class="stat-value">{{ stats.recent_downloads }}</div>
-                <i class="fas fa-download stat-icon"></i>
-            </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div>
+          <div class="stat-title">Total Artists</div>
+          <div class="stat-value">{{ stats.total_artists }}</div>
         </div>
+        <div class="stat-icon secondary">
+          <i class="fas fa-microphone"></i>
+        </div>
+      </div>
     </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div>
+          <div class="stat-title">Total Albums</div>
+          <div class="stat-value">{{ stats.total_albums }}</div>
+        </div>
+        <div class="stat-icon success">
+          <i class="fas fa-compact-disc"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div>
+          <div class="stat-title">Total Songs</div>
+          <div class="stat-value">{{ stats.total_songs }}</div>
+        </div>
+        <div class="stat-icon warning">
+          <i class="fas fa-music"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-sections">
+    <div class="section-card">
+      <h2 class="section-title">Top Downloaded Songs</h2>
+      <ul class="top-list">
+        {% for song in stats.top_songs %}
+        <li class="top-list-item">
+          <div class="item-rank">{{ loop.index }}</div>
+          <div class="item-details">
+            <div class="item-title">{{ song.name }}</div>
+            <div class="item-subtitle">{{ song.artists|join(', ') }}</div>
+          </div>
+          <div class="item-value">{{ song.download_count }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="section-card">
+      <h2 class="section-title">Most Liked Songs</h2>
+      <ul class="top-list">
+        {% for song in stats.most_liked_songs %}
+        <li class="top-list-item">
+          <div class="item-rank">{{ loop.index }}</div>
+          <div class="item-details">
+            <div class="item-title">{{ song.name }}</div>
+            <div class="item-subtitle">{{ song.artists|join(', ') }}</div>
+          </div>
+          <div class="item-value">{{ song.likes_count }} ❤️</div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="section-card">
+      <h2 class="section-title">Recent Downloads</h2>
+      {% for download in stats.recent_downloads_list %}
+      <div class="recent-activity">
+        <div class="activity-icon">
+          <i class="fas fa-download"></i>
+        </div>
+        <div class="activity-content">
+          <div class="item-title">{{ download.song.name }}</div>
+          <div class="item-subtitle">by {{ download.user.username }}</div>
+          <div class="activity-time">{{ download.download_time.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 
-<!-- 添加 Font Awesome 图标支持 -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 {% endblock %}

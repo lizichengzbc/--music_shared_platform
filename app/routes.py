@@ -38,7 +38,6 @@ redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 def login_rate_limit(f):
     """登录请求速率限制装饰器"""
-
     @wraps(f)
     def decorated_function(*args, **kwargs):
         key = f'login_attempts:{request.remote_addr}'
